@@ -15,7 +15,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Supabase Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -204,7 +203,6 @@
     
     <div class="top-card">
       <div class="header">
-        <!-- ADMIN HIDDEN BUTTON (Logo click) -->
         <img src="ucify.webp" alt="UCify Logo" class="logo-img" id="logoTrigger" draggable="false">
         <p class="tagline">BGMI UC • Lightning-fast delivery</p>
 
@@ -231,7 +229,6 @@
       </div>
     </div>
 
-    <!-- STEP 1: PLAYER DETAILS -->
     <div id="step1" class="step active">
       <div class="step-content">
         <h2 class="step-title">Player Details</h2>
@@ -259,13 +256,11 @@
       </div>
     </div>
 
-    <!-- STEP 2: SELECT PACK -->
     <div id="step2" class="step">
       <div class="step-content">
         <h2 class="step-title">Select BGMI UC Packs</h2>
         <p class="subnote">Top up for <span id="displayUid" style="color:var(--primary);">--</span> (<span id="displayIgn" style="color:#fff;">--</span>)</p>
 
-        <!-- Dynamic Packs inject from Database -->
         <div id="dynamicPacksContainer"></div>
 
         <div class="btn-row">
@@ -275,7 +270,6 @@
       </div>
     </div>
 
-    <!-- STEP 3: PAYMENT -->
     <div id="step3" class="step">
       <div class="step-content">
         <h2 class="step-title">Payment Gateway</h2>
@@ -313,7 +307,6 @@
       </div>
     </div>
 
-    <!-- STEP 4: SUCCESS -->
     <div id="step4" class="step">
       <div class="step-content success-screen">
         <div class="success-icon"><i class="fa-regular fa-circle-check"></i></div>
@@ -349,7 +342,6 @@
     <div class="footer-managed">Managed by <strong>Krafton Inc.</strong></div>
   </div>
 
-  <!-- ADMIN MODALS -->
   <div class="modal-overlay" id="adminLoginModal" onclick="closeModalOutside(event, 'adminLoginModal')">
     <div class="modal-box">
         <div class="modal-header">
@@ -371,13 +363,11 @@
             <button class="close-btn" onclick="closeModal('adminDashModal')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <!-- UPI -->
             <div class="admin-section">
                 <h4>Payment UPI ID</h4>
                 <input type="text" id="adminUpiInput" class="admin-input" placeholder="example@upi">
                 <button class="btn btn-secondary" onclick="adminUpdateUPI()" style="padding: 10px; font-size: 13px;">Save UPI ID</button>
             </div>
-            <!-- Packs -->
             <div class="admin-section">
                 <h4>Manage Packs</h4>
                 <div class="admin-pack-list" id="adminPackList"></div>
@@ -390,7 +380,6 @@
                     <button class="btn btn-primary" onclick="adminAddPack()" style="padding: 10px; font-size: 13px;">+ Add Pack</button>
                 </div>
             </div>
-            <!-- Database Wipe -->
             <div class="admin-section" style="border-bottom: none; margin-bottom: 0;">
                 <h4>Database Reset</h4>
                 <button class="btn btn-danger" onclick="adminClearOrders()" style="padding: 12px; font-size: 14px; width: 100%;"><i class="fa-solid fa-trash-can"></i> CLEAR ALL ORDERS</button>
@@ -400,14 +389,17 @@
   </div>
 
   <script>
-    // 👇👇👇 YAHAN APNA SUPABASE URL AUR ANON KEY DALEIN 👇👇👇
+    // 👇 KEYS ALREADY SET CORRECTLY 👇
     const SUPABASE_URL = "https://strxyjukoxavtiqawapj.supabase.co"; 
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0cnh5anVrb3hhdnRpcWF3YXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTYxMzYsImV4cCI6MjA5Nzc5MjEzNn0.eebIPrxi7b3SYpzXyijTbJEOzcvks4shqxnREDVgbIw";
-    // 👆👆👆 BAKI PURE CODE ME KUCH BHI CHANGE NAHI KARNA HAI 👆👆👆
 
     let supabase;
-    if(SUPABASE_URL && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    try {
+        if(window.supabase && SUPABASE_URL) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+    } catch (e) {
+        console.warn("Supabase Init Warning", e);
     }
 
     let activeUPI = "";
@@ -435,28 +427,17 @@
     function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.classList.remove('modal-open'); }
     function closeModalOutside(e, id) { if(e.target.id === id) closeModal(id); }
 
-    async function loadInitialData() {
-        if(!supabase) {
-            document.getElementById('globalLoader').style.display = 'none';
-            showToast("Supabase details not filled!", true);
-            return;
-        }
-        try {
-            const { data: settings } = await supabase.from('app_settings').select('*').eq('key', 'upi_id').single();
-            if(settings) activeUPI = settings.value;
-
-            const { data: packs } = await supabase.from('uc_packs').select('*').order('price', { ascending: true });
-            if(packs) globalPacks = packs;
-
-            renderPublicPacks();
-            document.getElementById('globalLoader').style.display = 'none';
-        } catch (error) {
-            document.getElementById('globalLoader').style.display = 'none';
-            showToast("Network Error", true);
-        }
-    }
-
     function renderPublicPacks() {
+        if(globalPacks.length === 0) {
+            // Anti-Freeze Fallback Packs (If internet is very slow)
+            globalPacks = [
+                { id: 991, type: 'trial', uc: 13, price: 5 },
+                { id: 992, type: 'bulk', uc: 1800, price: 300 },
+                { id: 993, type: 'bulk', uc: 4200, price: 600 }
+            ];
+            if(!activeUPI) activeUPI = "BHARATPE2B0G0R6K4Z35741@unitype";
+        }
+
         const container = document.getElementById('dynamicPacksContainer');
         container.innerHTML = ""; 
 
@@ -483,6 +464,40 @@
             <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false" onerror="this.src='https://cdn-icons-png.flaticon.com/512/8344/8344933.png'"> ${pack.uc} UC</div>
             <div class="pack-price">₹${pack.price}</div>
         </div>`;
+    }
+
+    async function loadInitialData() {
+        // Bulletproof Anti-Freeze Timer (Removes loader after 5 seconds anyway)
+        const fallbackTimer = setTimeout(() => {
+            const loader = document.getElementById('globalLoader');
+            if(loader && loader.style.display !== 'none') {
+                loader.style.display = 'none';
+                renderPublicPacks();
+            }
+        }, 5000);
+
+        if(!supabase) {
+            clearTimeout(fallbackTimer);
+            document.getElementById('globalLoader').style.display = 'none';
+            renderPublicPacks();
+            return;
+        }
+
+        try {
+            const { data: settings, error: err1 } = await supabase.from('app_settings').select('*').eq('key', 'upi_id').single();
+            if(settings && !err1) activeUPI = settings.value;
+
+            const { data: packs, error: err2 } = await supabase.from('uc_packs').select('*').order('price', { ascending: true });
+            if(packs && packs.length > 0 && !err2) globalPacks = packs;
+
+            clearTimeout(fallbackTimer);
+            renderPublicPacks();
+            document.getElementById('globalLoader').style.display = 'none';
+        } catch (error) {
+            clearTimeout(fallbackTimer);
+            renderPublicPacks();
+            document.getElementById('globalLoader').style.display = 'none';
+        }
     }
 
     window.onload = loadInitialData;
@@ -618,8 +633,10 @@
         
         let purchasedPacks = [];
         if (supabase) {
-            const { data } = await supabase.from('orders').select('uc_pack').eq('uid', currentUid).eq('status', 'completed');
-            if(data) purchasedPacks = data.map(o => o.uc_pack);
+            try {
+                const { data } = await supabase.from('orders').select('uc_pack').eq('uid', currentUid).eq('status', 'completed');
+                if(data) purchasedPacks = data.map(o => o.uc_pack);
+            } catch(e) {}
         }
 
         document.querySelectorAll('.pack-card').forEach(card => {
@@ -651,7 +668,9 @@
       qrImage.style.display = 'none'; loader.style.display = 'block';
 
       if (supabase) {
-          await supabase.from('orders').insert([{ order_id: orderId, uid: currentUid, ign: currentIgn, uc_pack: selectedPack.uc, amount: parseFloat(exactPriceStr), status: 'pending' }]);
+          try {
+              await supabase.from('orders').insert([{ order_id: orderId, uid: currentUid, ign: currentIgn, uc_pack: selectedPack.uc, amount: parseFloat(exactPriceStr), status: 'pending' }]);
+          } catch(e) {}
       }
 
       const upiString = `upi://pay?pa=${activeUPI}&pn=UCify%20Store&am=${exactPriceStr}&cu=INR`;
@@ -668,10 +687,12 @@
           }, 1000);
           
           if(supabase) {
-              realtimeChannel = supabase.channel('order-status').on(
-                  'postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `order_id=eq.${orderId}` },
-                  (payload) => { if (payload.new.status === 'completed') processSuccessfulPayment(); }
-              ).subscribe();
+              try {
+                  realtimeChannel = supabase.channel('order-status').on(
+                      'postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `order_id=eq.${orderId}` },
+                      (payload) => { if (payload.new.status === 'completed') processSuccessfulPayment(); }
+                  ).subscribe();
+              } catch(e) {}
           }
       };
       showStep(3);
