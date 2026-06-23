@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  
+  <title>UCify - BGMI UC Store</title>
+  <meta name="title" content="UCify - BGMI UC Store | Fast & Secure UC Delivery">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Supabase Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --primary: #FFB800; /* UC Gold */
+      --primary-glow: rgba(255, 184, 0, 0.6);
+      --accent: #00E0FF; /* Tech Cyan */
+      --bg-dark: #050507;
+      --bg-panel: #0e0e12;
+      --surface: rgba(255, 255, 255, 0.05);
+      --surface-border: rgba(255, 255, 255, 0.12);
+      --text-main: #ffffff;
+      --text-muted: #9ca3af;
+      --success: #00ff9d;
+      --error: #ff4757;
+      
+      --font-display: 'Rajdhani', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+      
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; -ms-user-select: none; user-select: none; }
+    input, textarea, select { -webkit-user-select: text; -ms-user-select: text; user-select: text; }
+    img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; pointer-events: auto; }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 0% 0%, rgba(255, 184, 0, 0.08) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0, 224, 255, 0.08) 0%, transparent 50%);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    body.modal-open { overflow: hidden; }
+
+    .container { width: 100%; max-width: 480px; padding: 20px; position: relative; z-index: 2; flex: 1; }
+
+    /* Header */
+    .top-card { background: rgba(14, 14, 18, 0.7); backdrop-filter: blur(20px); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); padding: 30px 20px; text-align: center; margin-bottom: 25px; position: relative; overflow: hidden; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.8); }
+    .top-card::before { content: ''; position: absolute; top: -50%; left: 50%; transform: translateX(-50%); width: 60%; height: 100%; background: radial-gradient(circle, rgba(255,184,0,0.2), transparent 70%); pointer-events: none; filter: blur(40px); }
+    .logo-img { max-width: 160px; height: auto; filter: drop-shadow(0 0 15px rgba(255,184,0,0.4)); margin-bottom: 5px; cursor: pointer; }
+    .tagline { color: var(--text-muted); font-size: 13px; margin-top: 5px; letter-spacing: 0.5px; }
+    .partner-block { margin-top: 15px; }
+    .official-logo { display: block; margin: 15px auto 0; max-width: 140px; border-radius: 6px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4)); }
+    .trust-strip { display: flex; justify-content: center; gap: 12px; margin-top: 15px; }
+    .trust-pill { font-size: 11px; color: var(--text-muted); background: var(--surface); padding: 6px 12px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 6px; border: 1px solid var(--surface-border); }
+    .live-stats { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+    .stat-badge { font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 224, 255, 0.05); border: 1px solid rgba(0, 224, 255, 0.2); padding: 6px 12px; border-radius: var(--radius-sm); }
+    .stat-number { color: var(--accent); font-weight: 800; font-family: var(--font-display); }
+
+    /* Progress Bar */
+    .progress-wrap { margin-bottom: 25px; padding: 0 10px; }
+    .progress-container { display: flex; justify-content: space-between; position: relative; }
+    .progress-container::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #333; transform: translateY(-50%); z-index: 0; }
+    .progress-step { width: 32px; height: 32px; background: var(--bg-panel); border: 2px solid #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: #666; position: relative; z-index: 1; transition: all 0.3s ease; }
+    .progress-step.active { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 10px rgba(255,184,0,0.3); background: var(--bg-dark); transform: scale(1.1); }
+    .progress-step.completed { background: var(--primary); border-color: var(--primary); color: #000; }
+    .progress-line { display: none; } 
+
+    /* Steps Content */
+    .step { display: none; animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .step.active { display: block; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .step-content { background: var(--bg-panel); border: 1px solid var(--surface-border); border-radius: var(--radius-lg); padding: 24px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .step-content::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.5; }
+    .step-title { font-family: var(--font-display); font-size: 26px; text-transform: uppercase; margin-bottom: 5px; color: #fff; background: linear-gradient(to right, #fff, #b0b0b0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .subnote { color: var(--text-muted); font-size: 14px; margin-bottom: 25px; }
+
+    /* Inputs */
+    .form-group { margin-bottom: 20px; position: relative; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 1px; }
+    .form-input-wrapper { position: relative; }
+    .form-input { width: 100%; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--surface-border); color: #fff; padding: 16px; padding-right: 40px; border-radius: var(--radius-md); font-family: var(--font-display); font-size: 18px; letter-spacing: 1px; transition: all 0.3s ease; }
+    .form-input::placeholder { color: rgba(255,255,255,0.2); }
+    .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 15px rgba(255,184,0,0.1); background: rgba(255, 255, 255, 0.1); }
+    .input-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--success); font-size: 18px; opacity: 0; transition: 0.3s; }
+    .input-icon.check { opacity: 1; }
+    .error-message { color: var(--error); font-size: 12px; margin-top: 6px; display: none; }
+    .error-message.show { display: block; animation: shake 0.4s ease; }
+
+    /* Packs Grid */
+    .pack-section-title { font-family: var(--font-display); font-size: 16px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; margin-bottom: 10px; }
+    .packs-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px; }
+    .pack-card { background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%); border: 1px solid var(--surface-border); border-radius: var(--radius-md); padding: 15px; text-align: center; cursor: pointer; position: relative; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden; display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding-left: 20px; padding-right: 20px; }
+    .pack-card:hover:not(.purchased) { transform: translateY(-3px); border-color: rgba(255,184,0,0.4); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+    .pack-card.selected { background: rgba(255, 184, 0, 0.1); border: 1px solid var(--primary); box-shadow: 0 0 20px rgba(255,184,0,0.15); }
+    .pack-card.purchased { display: none !important; }
+    .pack-uc { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 22px; font-weight: 700; color: #fff; }
+    .uc-icon { width: 22px; height: 22px; }
+    .pack-price { color: var(--text-muted); font-size: 18px; font-weight: 600; }
+    .pack-card.selected .pack-price { color: var(--primary); }
+    .check-mark { position: absolute; top: 0; right: 0; background: var(--primary); color: #000; width: 24px; height: 24px; border-bottom-left-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn { width: 100%; padding: 16px; border: none; border-radius: var(--radius-md); font-family: var(--font-display); font-weight: 700; font-size: 16px; text-transform: uppercase; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; position: relative; overflow: hidden; }
+    .btn-primary { background: var(--primary); color: #000; box-shadow: 0 4px 15px rgba(255,184,0,0.3); }
+    .btn-primary:hover:not(:disabled) { background: #ffc42e; transform: translateY(-2px); box-shadow: 0 0 25px rgba(255,184,0,0.6); }
+    .btn-primary:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
+    .btn-secondary { background: transparent; border: 1px solid var(--surface-border); color: var(--text-muted); }
+    .btn-secondary:hover { border-color: #fff; color: #fff; }
+    .btn-danger { background: rgba(255, 71, 87, 0.1); border: 1px solid var(--error); color: var(--error); }
+    .btn-danger:hover { background: var(--error); color: #fff; }
+
+    /* Payment & Success */
+    .payment-section { text-align: center; }
+    .qr-card { background: #000; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--surface-border); margin: 15px 0; }
+    .qr-box { width: 200px; height: 200px; margin: 0 auto; background: #fff; padding: 10px; border-radius: 10px; }
+    .qr-skeleton { width: 100%; height: 100%; background: #222; animation: pulse 1.5s infinite; }
+    .qr-timer { color: var(--error); font-family: var(--font-display); font-weight: 600; margin: 10px 0; }
+    .auto-verify-box { margin-top: 20px; padding: 15px; background: rgba(0, 224, 255, 0.05); border: 1px solid rgba(0, 224, 255, 0.2); border-radius: var(--radius-md); text-align: center; transition: all 0.3s ease; }
+    .success-screen { text-align: center; }
+    .success-icon { font-size: 60px; color: var(--success); margin-bottom: 20px; text-shadow: 0 0 30px rgba(0,255,157,0.5); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes popIn { 0%{transform: scale(0);} 100%{transform: scale(1);} }
+    .success-title { font-family: var(--font-display); font-size: 28px; color: #fff; margin-bottom: 20px; }
+    .game-loader-wrap { margin: 30px 0; }
+    .game-bar-bg { height: 8px; background: #222; border-radius: 5px; overflow: hidden; margin-bottom: 10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+    .game-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #ff6b00); width: 0%; box-shadow: 0 0 15px rgba(255,184,0,0.6); border-radius: 5px; transition: width 1s linear; }
+    .timer-text { font-family: monospace; color: var(--primary); font-size: 16px; }
+    .receipt-box { background: #000; border: 1px solid #333; padding: 20px; border-radius: var(--radius-md); text-align: left; margin-top: 20px; font-family: monospace; font-size: 13px; }
+    .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
+    .receipt-label { color: #666; }
+    .receipt-value { color: #fff; font-weight: 600; }
+
+    /* Footer & Modals */
+    .site-footer { width: 100%; max-width: 480px; text-align: center; padding: 10px 20px 40px 20px; position: relative; z-index: 2; }
+    .footer-managed { color: var(--text-muted); font-size: 13px; margin-bottom: 15px; }
+    .footer-managed strong { color: #fff; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 9999; padding: 20px; opacity: 0; transition: opacity 0.3s ease; }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-box { background: #0a0a0c; border: 1px solid var(--surface-border); border-radius: var(--radius-md); width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto; padding: 0; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
+    .modal-overlay.active .modal-box { transform: translateY(0); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; background: rgba(10,10,12,0.95); backdrop-filter: blur(10px); z-index: 2; }
+    .modal-header h3 { color: var(--primary); font-family: var(--font-display); font-size: 20px; margin: 0; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; transition: 0.2s; padding: 5px; }
+    .close-btn:hover { color: #fff; }
+    .modal-body { padding: 20px; color: #eee; font-size: 13px; line-height: 1.6; }
+
+    /* Admin Panel */
+    .admin-section { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .admin-section h4 { color: var(--primary); margin-bottom: 15px; font-family: var(--font-display); font-size: 18px; text-transform: uppercase; }
+    .admin-pack-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+    .admin-pack-item { background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
+    .admin-input { width: 100%; background: #111; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+    .admin-input:focus { border-color: var(--primary); outline: none; }
+    .admin-pack-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #1a1a1a; border: 1px solid var(--success); padding: 12px 24px; border-radius: 50px; display: flex; align-items: center; gap: 10px; z-index: 10000; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { border-color: var(--error); }
+    .toast.error i { color: var(--error); }
+
+    .floating-particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    .particle { position: absolute; color: var(--primary); opacity: 0.1; font-size: 10px; animation: floatUp linear infinite; }
+    @keyframes floatUp { 0% { transform: translateY(100vh) rotate(0deg); opacity: 0; } 20% { opacity: 0.2; } 80% { opacity: 0.2; } 100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; } }
+
+    #globalLoader { position: fixed; inset:0; background: var(--bg-dark); z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .spinner { border: 4px solid rgba(255,184,0,0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: var(--primary); animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+
+<body oncontextmenu="return false;">
+  
+  <div id="globalLoader">
+      <div class="spinner"></div>
+      <div style="margin-top: 15px; color: var(--primary); font-family: var(--font-display); font-weight: 700; letter-spacing: 2px;">SECURE CONNECTION</div>
+  </div>
+
+  <audio id="bgmAudio" src="bgm.mp3" loop></audio>
+  <div class="floating-particles" id="floatingParticles"></div>
+
+  <div class="toast" id="toast">
+    <i class="fas fa-check-circle" id="toastIcon"></i>
+    <span class="toast-text" id="toastText">Message</span>
+  </div>
+
+  <div class="container">
+    
+    <div class="top-card">
+      <div class="header">
+        <!-- ADMIN HIDDEN BUTTON (Logo click) -->
+        <img src="ucify.webp" alt="UCify Logo" class="logo-img" id="logoTrigger" draggable="false">
+        <p class="tagline">BGMI UC • Lightning-fast delivery</p>
+
+        <div class="partner-block">
+          <img src="bgmi-official.webp" alt="BGMI Official" class="official-logo" draggable="false">
+        </div>
+
+        <div class="trust-strip">
+          <div class="trust-pill"><i class="fa-solid fa-lock"></i> Secure</div>
+          <div class="trust-pill"><i class="fa-solid fa-bolt"></i> Instant</div>
+          <div class="trust-pill"><i class="fa-solid fa-headset"></i> 24/7</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-container">
+        <div class="progress-step active" data-step="1">1</div>
+        <div class="progress-line" id="line1"></div> <div class="progress-step" data-step="2">2</div>
+        <div class="progress-line" id="line2"></div>
+        <div class="progress-step" data-step="3">3</div>
+        <div class="progress-line" id="line3"></div>
+        <div class="progress-step" data-step="4"><i class="fa-solid fa-check"></i></div>
+      </div>
+    </div>
+
+    <!-- STEP 1: PLAYER DETAILS -->
+    <div id="step1" class="step active">
+      <div class="step-content">
+        <h2 class="step-title">Player Details</h2>
+        <p class="subnote">Enter your BGMI ID to verify account</p>
+
+        <div class="form-group">
+          <label class="form-label">BGMI Character ID (UID)</label>
+          <div class="form-input-wrapper">
+            <input type="tel" class="form-input" id="uid" placeholder="" maxlength="12" inputmode="numeric">
+            <i class="input-icon" id="uidIcon"></i>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">BGMI ID Name</label>
+          <div class="form-input-wrapper">
+            <input type="text" class="form-input" id="ign" placeholder="" maxlength="20">
+            <i class="input-icon" id="ignIcon"></i>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="next1" disabled>Verify & Continue <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: SELECT PACK -->
+    <div id="step2" class="step">
+      <div class="step-content">
+        <h2 class="step-title">Select BGMI UC Packs</h2>
+        <p class="subnote">Top up for <span id="displayUid" style="color:var(--primary);">--</span> (<span id="displayIgn" style="color:#fff;">--</span>)</p>
+
+        <!-- Dynamic Packs inject from Database -->
+        <div id="dynamicPacksContainer"></div>
+
+        <div class="btn-row">
+           <button type="button" class="btn btn-secondary" id="backToDetails">Back</button>
+           <button type="button" class="btn btn-primary" id="next2" disabled>Checkout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: PAYMENT -->
+    <div id="step3" class="step">
+      <div class="step-content">
+        <h2 class="step-title">Payment Gateway</h2>
+        <p class="subnote">Scan & pay using any UPI app</p>
+
+        <div class="payment-section">
+          <div style="font-size: 14px; margin-bottom: 5px; color: var(--text-muted);">TOTAL PAYABLE (EXACT)</div>
+          <div style="font-size: 36px; font-weight: 800; color: var(--primary); font-family: var(--font-display); margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,184,0,0.3);">
+            <span id="paymentAmount">₹0</span>
+          </div>
+
+          <div class="qr-card">
+            <div class="qr-box">
+               <div id="qrLoader" class="qr-skeleton"></div>
+               <img id="staticQrImage" src="" alt="Scan QR" style="width:100%; height:100%; object-fit:contain; display:none; pointer-events: auto;" draggable="false">
+            </div>
+            <div class="qr-timer" id="qrTimer" style="display:none;">
+              <i class="fa-regular fa-clock"></i> <span id="timerDisplay">15:00</span>
+            </div>
+          </div>
+
+          <div id="verificationStatus" class="auto-verify-box">
+              <i class="fas fa-circle-notch fa-spin" style="color: var(--accent); font-size: 28px; margin-bottom: 12px;"></i>
+              <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 18px;">Awaiting Payment...</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                  Please scan and pay exactly <strong id="exactAmountText" style="color: var(--primary);">₹0.00</strong>.<br>
+                  Our system will detect your payment automatically.
+              </div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" id="back3">Cancel Transaction</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: SUCCESS -->
+    <div id="step4" class="step">
+      <div class="step-content success-screen">
+        <div class="success-icon"><i class="fa-regular fa-circle-check"></i></div>
+        <h2 class="success-title">Order Confirmed</h2>
+        
+        <div class="game-loader-wrap" id="gameLoaderWrap">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span class="delivery-msg" id="deliveryMsg">Connecting to BGMI Servers...</span>
+                <span class="timer-text" id="deliveryTimer">07:00</span>
+            </div>
+            <div class="game-bar-bg">
+                <div class="game-bar-fill" id="gameBarFill"></div>
+            </div>
+        </div>
+
+        <div class="receipt-box">
+          <div style="color: var(--primary); margin-bottom: 15px; font-weight: 700; display:flex; justify-content:space-between;">
+             <span>RECEIPT</span><span><span id="orderIdText" style="color: #fff;">--</span></span>
+          </div>
+          <div class="receipt-row"><span class="receipt-label">Pack</span><span class="receipt-value" id="receipt-pack">--</span></div>
+          <div class="receipt-row"><span class="receipt-label">Amount Paid</span><span class="receipt-value" id="receipt-amount">--</span></div>
+          <div class="receipt-row"><span class="receipt-label">UID</span><span class="receipt-value" id="receipt-uid">--</span></div>
+        </div>
+
+        <div id="newOrderBtnWrap" style="margin-top: 20px;">
+          <button type="button" class="btn btn-primary" onclick="location.reload()">Place Another Order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="site-footer">
+    <div class="footer-managed">Managed by <strong>Krafton Inc.</strong></div>
+  </div>
+
+  <!-- ADMIN MODALS -->
+  <div class="modal-overlay" id="adminLoginModal" onclick="closeModalOutside(event, 'adminLoginModal')">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Admin Access</h3>
+            <button class="close-btn" onclick="closeModal('adminLoginModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="adminUsername" class="admin-input" placeholder="Username">
+            <input type="password" id="adminPassword" class="admin-input" placeholder="Password">
+            <button class="btn btn-primary" id="adminLoginBtn" style="padding: 12px; font-size: 14px;">Login</button>
+        </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="adminDashModal" onclick="closeModalOutside(event, 'adminDashModal')">
+    <div class="modal-box" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>Dashboard</h3>
+            <button class="close-btn" onclick="closeModal('adminDashModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- UPI -->
+            <div class="admin-section">
+                <h4>Payment UPI ID</h4>
+                <input type="text" id="adminUpiInput" class="admin-input" placeholder="example@upi">
+                <button class="btn btn-secondary" onclick="adminUpdateUPI()" style="padding: 10px; font-size: 13px;">Save UPI ID</button>
+            </div>
+            <!-- Packs -->
+            <div class="admin-section">
+                <h4>Manage Packs</h4>
+                <div class="admin-pack-list" id="adminPackList"></div>
+                <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; border: 1px dashed #444;">
+                    <div class="admin-pack-form">
+                        <select id="newPackType" class="admin-input"><option value="bulk">Bulk Pack</option><option value="trial">Trial Pack</option></select>
+                        <input type="number" id="newPackUC" class="admin-input" placeholder="UC Amount">
+                    </div>
+                    <input type="number" id="newPackPrice" class="admin-input" placeholder="Price (₹)">
+                    <button class="btn btn-primary" onclick="adminAddPack()" style="padding: 10px; font-size: 13px;">+ Add Pack</button>
+                </div>
+            </div>
+            <!-- Database Wipe -->
+            <div class="admin-section" style="border-bottom: none; margin-bottom: 0;">
+                <h4>Database Reset</h4>
+                <button class="btn btn-danger" onclick="adminClearOrders()" style="padding: 12px; font-size: 14px; width: 100%;"><i class="fa-solid fa-trash-can"></i> CLEAR ALL ORDERS</button>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    // 👇👇👇 YAHAN APNA SUPABASE URL AUR ANON KEY DALEIN 👇👇👇
+    const SUPABASE_URL = "https://strxyjukoxavtiqawapj.supabase.co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0cnh5anVrb3hhdnRpcWF3YXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTYxMzYsImV4cCI6MjA5Nzc5MjEzNn0.eebIPrxi7b3SYpzXyijTbJEOzcvks4shqxnREDVgbIw";
+    // 👆👆👆 BAKI PURE CODE ME KUCH BHI CHANGE NAHI KARNA HAI 👆👆👆
+
+    let supabase;
+    if(SUPABASE_URL && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    let activeUPI = "";
+    let globalPacks = [];
+    let currentStep = 1;
+    let selectedPack = null;
+    let exactPriceStr = "0.00"; 
+    let orderId = null;
+    let qrTimer = null;
+    let realtimeChannel = null;
+    let currentUid = "";
+    let currentIgn = "";
+    let adminAuth = { u: '', p: '' };
+
+    function showToast(message, isError=false){
+      const toast = document.getElementById('toast');
+      document.getElementById('toastText').textContent = message;
+      document.getElementById('toastIcon').className = isError ? "fas fa-exclamation-triangle" : "fas fa-check-circle";
+      if(isError) toast.classList.add('error'); else toast.classList.remove('error');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); document.body.classList.add('modal-open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.classList.remove('modal-open'); }
+    function closeModalOutside(e, id) { if(e.target.id === id) closeModal(id); }
+
+    async function loadInitialData() {
+        if(!supabase) {
+            document.getElementById('globalLoader').style.display = 'none';
+            showToast("Supabase details not filled!", true);
+            return;
+        }
+        try {
+            const { data: settings } = await supabase.from('app_settings').select('*').eq('key', 'upi_id').single();
+            if(settings) activeUPI = settings.value;
+
+            const { data: packs } = await supabase.from('uc_packs').select('*').order('price', { ascending: true });
+            if(packs) globalPacks = packs;
+
+            renderPublicPacks();
+            document.getElementById('globalLoader').style.display = 'none';
+        } catch (error) {
+            document.getElementById('globalLoader').style.display = 'none';
+            showToast("Network Error", true);
+        }
+    }
+
+    function renderPublicPacks() {
+        const container = document.getElementById('dynamicPacksContainer');
+        container.innerHTML = ""; 
+
+        const trialPacks = globalPacks.filter(p => p.type === 'trial');
+        const bulkPacks = globalPacks.filter(p => p.type === 'bulk');
+
+        if(trialPacks.length > 0) {
+            container.innerHTML += `<h3 class="pack-section-title" id="trialPackTitle">Trial UC Pack</h3>`;
+            const grid = document.createElement('div'); grid.className = 'packs-grid'; grid.id = "trialPacksGrid";
+            trialPacks.forEach(p => grid.innerHTML += createPackHTML(p));
+            container.appendChild(grid);
+        }
+
+        if(bulkPacks.length > 0) {
+            container.innerHTML += `<h3 class="pack-section-title">Bulk UC Pack</h3>`;
+            const grid = document.createElement('div'); grid.className = 'packs-grid'; grid.id = "bulkPacksGrid";
+            bulkPacks.forEach(p => grid.innerHTML += createPackHTML(p));
+            container.appendChild(grid);
+        }
+    }
+
+    function createPackHTML(pack) {
+        return `<div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
+            <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false" onerror="this.src='https://cdn-icons-png.flaticon.com/512/8344/8344933.png'"> ${pack.uc} UC</div>
+            <div class="pack-price">₹${pack.price}</div>
+        </div>`;
+    }
+
+    window.onload = loadInitialData;
+
+    // --- SECRET ADMIN SYSTEM ---
+    let logoClicks = 0;
+    let logoTimeout;
+    document.getElementById('logoTrigger').addEventListener('click', () => {
+        logoClicks++;
+        clearTimeout(logoTimeout);
+        if(logoClicks >= 5) {
+            logoClicks = 0;
+            if(adminAuth.u !== '') { openAdminDashboard(); } else { openModal('adminLoginModal'); }
+        }
+        logoTimeout = setTimeout(() => { logoClicks = 0; }, 1500); 
+    });
+
+    document.getElementById('adminLoginBtn').addEventListener('click', async () => {
+        const u = document.getElementById('adminUsername').value;
+        const p = document.getElementById('adminPassword').value;
+        if(!u || !p) return;
+        document.getElementById('adminLoginBtn').innerHTML = 'Wait...';
+        try {
+            const { data } = await supabase.rpc('check_admin', { u: u, p: p });
+            if(data === true) {
+                adminAuth.u = u; adminAuth.p = p; 
+                closeModal('adminLoginModal');
+                document.getElementById('adminUsername').value = ""; document.getElementById('adminPassword').value = "";
+                openAdminDashboard();
+            } else { showToast("Wrong ID/Password", true); }
+        } catch (e) { showToast("Connection Error", true); }
+        document.getElementById('adminLoginBtn').innerHTML = 'Login';
+    });
+
+    function openAdminDashboard() {
+        document.getElementById('adminUpiInput').value = activeUPI;
+        renderAdminPacks();
+        openModal('adminDashModal');
+    }
+
+    function renderAdminPacks() {
+        const list = document.getElementById('adminPackList');
+        list.innerHTML = "";
+        globalPacks.forEach(pack => {
+            list.innerHTML += `<div class="admin-pack-item">
+                <div style="font-weight:bold; color:#fff;">${pack.uc} UC <span style="color:var(--text-muted); font-size:12px;">(₹${pack.price})</span></div>
+                <button class="btn btn-danger" style="width:auto; padding: 6px 12px; font-size:12px;" onclick="adminDeletePack(${pack.id})"><i class="fas fa-trash"></i></button>
+            </div>`;
+        });
+    }
+
+    async function adminUpdateUPI() {
+        const newUpi = document.getElementById('adminUpiInput').value.trim();
+        if(!newUpi) return;
+        const { data } = await supabase.rpc('admin_update_upi', { u: adminAuth.u, p: adminAuth.p, new_upi: newUpi });
+        if(data) { activeUPI = newUpi; showToast("UPI Updated"); } else showToast("Failed", true);
+    }
+
+    async function adminAddPack() {
+        const type = document.getElementById('newPackType').value;
+        const uc = parseInt(document.getElementById('newPackUC').value);
+        const price = parseFloat(document.getElementById('newPackPrice').value);
+        if(!uc || !price) { showToast("Fill details", true); return; }
+        const { data } = await supabase.rpc('admin_add_pack', { u: adminAuth.u, p: adminAuth.p, p_type: type, p_uc: uc, p_price: price });
+        if(data) { showToast("Pack Added"); document.getElementById('newPackUC').value = ""; document.getElementById('newPackPrice').value = ""; await reloadData(); } 
+        else showToast("Failed", true);
+    }
+
+    async function adminDeletePack(id) {
+        if(!confirm("Delete this pack?")) return;
+        const { data } = await supabase.rpc('admin_delete_pack', { u: adminAuth.u, p: adminAuth.p, pack_id: id });
+        if(data) { showToast("Pack Deleted"); await reloadData(); } else showToast("Failed", true);
+    }
+
+    async function adminClearOrders() {
+        if(!confirm("WARNING! Erase all data?")) return;
+        const { data } = await supabase.rpc('admin_clear_orders', { u: adminAuth.u, p: adminAuth.p });
+        if(data) { showToast("All History Cleared"); } else showToast("Failed", true);
+    }
+
+    async function reloadData() {
+        const { data: packs } = await supabase.from('uc_packs').select('*').order('price', { ascending: true });
+        if(packs) { globalPacks = packs; renderAdminPacks(); renderPublicPacks(); }
+    }
+
+    // --- CHECKOUT LOGIC ---
+    function showStep(step){
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step${step}`).classList.add('active');
+      currentStep = step;
+      document.querySelectorAll('.progress-step').forEach((el, idx) => {
+        el.classList.toggle('completed', idx < currentStep - 1);
+        el.classList.toggle('active', idx === currentStep - 1);
+      });
+    }
+
+    const uidInput = document.getElementById('uid');
+    const ignInput = document.getElementById('ign');
+
+    function checkStep1() {
+        const uidVal = uidInput.value.replace(/\D/g, '');
+        const ignVal = ignInput.value.trim();
+        document.getElementById('next1').disabled = !(uidVal.length >= 9 && ignVal.length >= 2);
+    }
+
+    uidInput.addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '').slice(0,12);
+      if(this.value.length >= 9){ this.style.borderColor="var(--success)"; document.getElementById('uidIcon').className='input-icon check fas fa-check-circle'; } 
+      else { this.style.borderColor=""; document.getElementById('uidIcon').className=''; }
+      checkStep1();
+    });
+
+    ignInput.addEventListener('input', function() {
+        if(this.value.trim().length >= 2){ this.style.borderColor="var(--success)"; document.getElementById('ignIcon').className='input-icon check fas fa-check-circle'; } 
+        else { this.style.borderColor=""; document.getElementById('ignIcon').className=''; }
+        checkStep1();
+    });
+
+    document.getElementById('dynamicPacksContainer').addEventListener('click', (e) => {
+        const card = e.target.closest('.pack-card');
+        if(!card || card.classList.contains('purchased')) return;
+        document.querySelectorAll('.pack-card').forEach(c => { c.classList.remove('selected'); c.querySelector('.check-mark')?.remove(); });
+        card.classList.add('selected');
+        const checkMark = document.createElement('div'); checkMark.className = 'check-mark'; checkMark.innerHTML = '<i class="fa-solid fa-check"></i>';
+        card.appendChild(checkMark);
+        selectedPack = { uc: card.dataset.uc, price: card.dataset.price };
+        document.getElementById('next2').disabled = false;
+    });
+
+    document.getElementById('next1').onclick = async () => {
+        document.getElementById('next1').innerHTML = 'Wait...';
+        currentUid = uidInput.value; currentIgn = ignInput.value;
+        
+        let purchasedPacks = [];
+        if (supabase) {
+            const { data } = await supabase.from('orders').select('uc_pack').eq('uid', currentUid).eq('status', 'completed');
+            if(data) purchasedPacks = data.map(o => o.uc_pack);
+        }
+
+        document.querySelectorAll('.pack-card').forEach(card => {
+            if(purchasedPacks.includes(card.dataset.uc)) card.classList.add('purchased');
+        });
+
+        const trialSection = document.getElementById('trialPacksGrid');
+        if(trialSection) {
+            const allPurchased = Array.from(trialSection.querySelectorAll('.pack-card')).every(c => c.classList.contains('purchased'));
+            if(allPurchased) { trialSection.style.display = 'none'; document.getElementById('trialPackTitle').style.display = 'none'; }
+        }
+
+        document.getElementById('next1').innerHTML = 'Verify & Continue';
+        showStep(2);
+    };
+
+    document.getElementById('backToDetails').onclick = () => showStep(1);
+
+    document.getElementById('next2').onclick = async function() {
+      const randomDecimal = (Math.floor(Math.random() * 99) + 1) / 100;
+      exactPriceStr = (parseFloat(selectedPack.price) + randomDecimal).toFixed(2); 
+      
+      document.getElementById('paymentAmount').textContent = '₹' + exactPriceStr;
+      document.getElementById('exactAmountText').textContent = '₹' + exactPriceStr;
+      orderId = `UCF-${Date.now().toString().slice(-6)}`;
+      
+      const qrImage = document.getElementById('staticQrImage');
+      const loader = document.getElementById('qrLoader');
+      qrImage.style.display = 'none'; loader.style.display = 'block';
+
+      if (supabase) {
+          await supabase.from('orders').insert([{ order_id: orderId, uid: currentUid, ign: currentIgn, uc_pack: selectedPack.uc, amount: parseFloat(exactPriceStr), status: 'pending' }]);
+      }
+
+      const upiString = `upi://pay?pa=${activeUPI}&pn=UCify%20Store&am=${exactPriceStr}&cu=INR`;
+      qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}&margin=10`;
+
+      qrImage.onload = function(){
+          loader.style.display = 'none'; qrImage.style.display = 'block';
+          let timerSeconds = 900;
+          document.getElementById('qrTimer').style.display = 'block';
+          qrTimer = setInterval(() => {
+            timerSeconds--;
+            document.getElementById('timerDisplay').textContent = `${Math.floor(timerSeconds/60)}:${(timerSeconds%60).toString().padStart(2,'0')}`;
+            if(timerSeconds <= 0){ clearInterval(qrTimer); if(realtimeChannel) supabase.removeChannel(realtimeChannel); }
+          }, 1000);
+          
+          if(supabase) {
+              realtimeChannel = supabase.channel('order-status').on(
+                  'postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `order_id=eq.${orderId}` },
+                  (payload) => { if (payload.new.status === 'completed') processSuccessfulPayment(); }
+              ).subscribe();
+          }
+      };
+      showStep(3);
+    };
+
+    document.getElementById('back3').onclick = () => {
+      clearInterval(qrTimer);
+      if(realtimeChannel) supabase.removeChannel(realtimeChannel);
+      showStep(2);
+    };
+
+    function processSuccessfulPayment() {
+        if(realtimeChannel) supabase.removeChannel(realtimeChannel);
+        clearInterval(qrTimer);
+
+        const vStatus = document.getElementById('verificationStatus');
+        vStatus.style.background = "rgba(0, 255, 157, 0.1)"; vStatus.style.borderColor = "var(--success)";
+        vStatus.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success); font-size: 32px; margin-bottom: 12px; animation: popIn 0.5s ease;"></i>
+                             <div style="font-weight: 700; color: #fff; font-size: 18px;">Payment Auto-Verified!</div>`;
+        
+        setTimeout(() => {
+            document.getElementById('orderIdText').textContent = orderId;
+            document.getElementById('receipt-pack').textContent = selectedPack.uc + " UC";
+            document.getElementById('receipt-amount').textContent = "₹" + exactPriceStr;
+            document.getElementById('receipt-uid').textContent = currentUid;
+            showStep(4);
+
+            const fillBar = document.getElementById('gameBarFill');
+            const msg = document.getElementById('deliveryMsg');
+            let s = 420;
+            const t = setInterval(() => {
+                s--; fillBar.style.width = ((420-s)/420)*100 + "%";
+                document.getElementById('deliveryTimer').textContent = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+                if(s<=0) { clearInterval(t); msg.textContent="Completed"; document.getElementById('gameLoaderWrap').style.display='none'; }
+            }, 1000);
+        }, 1500);
+    }
+  </script>
+</body>
+</html>
