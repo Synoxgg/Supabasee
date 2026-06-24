@@ -592,7 +592,7 @@
         position: relative;
         z-index: 2;
     }
-    .footer-managed { color: var(--text-muted); font-size: 13px; margin-bottom: 15px; }
+    .footer-managed { color: var(--text-muted); font-size: 13px; margin-bottom: 15px; transition: all 0.3s ease; }
     .footer-managed strong { color: #fff; }
     .footer-links {
         display: flex;
@@ -937,7 +937,7 @@
 
   <!-- SITE FOOTER -->
   <div class="site-footer">
-    <div class="footer-managed">
+    <div class="footer-managed" id="footerKrafton">
       Managed by <strong>Krafton Inc.</strong>
     </div>
     <div class="footer-links">
@@ -985,13 +985,32 @@
            <button class="close-btn" onclick="closeModal('adminPanelModal')"><i class="fas fa-times"></i></button>
        </div>
        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
-          <!-- UPI Settings -->
-          <h4>UPI ID Setting</h4>
-          <div class="form-group">
-             <input type="text" class="form-input" id="adminUpiId" value="...">
+          
+          <!-- UPI Settings (Multiple UPI & Load Balancing) -->
+          <h4>UPI Settings (Load Balancing)</h4>
+          <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Select multiple active UPI IDs to randomly distribute load.</p>
+          <div id="adminUpiList"></div>
+          <div class="admin-input-group">
+             <input type="text" id="newUpiId" class="form-input" placeholder="Enter UPI ID (e.g. name@bank)" style="padding: 10px; width: 70%;">
+             <button class="btn btn-primary" onclick="addNewUpi()" style="padding: 10px; width: 30%;"><i class="fas fa-plus"></i> Add</button>
           </div>
           
-          <!-- API Settings (Naye Google Sheet, Discord aadi backend options) -->
+          <hr style="border-color: #333; margin: 20px 0;">
+
+          <!-- UI Settings (BGMI Logo Toggle & Krafton Footer Toggle) -->
+          <h4>UI Settings</h4>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 12px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: var(--radius-sm);">
+             <div style="display: flex; align-items: center; gap: 10px;">
+                 <input type="checkbox" id="adminShowLogo" style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                 <label for="adminShowLogo" style="color: #fff; font-size: 14px; cursor: pointer;">Show BGMI Official Logo</label>
+             </div>
+             <div style="display: flex; align-items: center; gap: 10px;">
+                 <input type="checkbox" id="adminShowKrafton" style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                 <label for="adminShowKrafton" style="color: #fff; font-size: 14px; cursor: pointer;">Show 'Managed by Krafton Inc.'</label>
+             </div>
+          </div>
+
+          <!-- API Settings -->
           <h4>Backend API Links</h4>
           <div class="form-group">
              <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Google Sheet (Order tracking)</label>
@@ -1004,13 +1023,6 @@
           <div class="form-group">
              <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Payment Verify API</label>
              <input type="text" class="form-input" id="adminVerifyUrl" placeholder="Enter Verify Script URL" style="font-size:12px; padding:12px;">
-          </div>
-
-          <!-- UI Settings (BGMI Logo Toggle) -->
-          <h4>UI Settings</h4>
-          <div class="form-group" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: var(--radius-sm);">
-             <input type="checkbox" id="adminShowLogo" style="width: 18px; height: 18px; accent-color: var(--primary);">
-             <label for="adminShowLogo" style="color: #fff; font-size: 14px; cursor: pointer;">Show BGMI Official Logo</label>
           </div>
           
           <!-- Manage Trial Packs -->
@@ -1107,12 +1119,12 @@
                 if (docSnap.exists()) {
                     const dbConfig = docSnap.data();
                     window.siteConfig = dbConfig;
-                    window.UPIVPA = dbConfig.upiId;
                     
                     // Bina refresh kiye UI update karna
                     if(typeof window.applyUISettings === 'function') window.applyUISettings();
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
                     if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
+                    if(typeof window.renderAdminUpiList === 'function') window.renderAdminUpiList();
                     console.log("Website configuration updated live from database!");
                 } else {
                     if(window.siteConfig) {
@@ -1129,14 +1141,13 @@
   <!-- SCRIPT 2: NORMAL WEBSITE LOGIC -->
   <script>
     // --- ADMIN SYSTEM VARIABLES ---
-    // Yaha se sabhi private URLs hata diye gaye hain taaki source code me koi na dekh sake.
-    // Ye URLs ab seedha Firebase Database se live fetch honge.
     const defaultAdminConfig = {
-        upiId: "BHARATPE2B0G0R6K4Z35741@unitype",
-        appsScriptUrl: "", // Removed from source code for privacy
-        discordWebhookUrl: "", // Removed from source code for privacy
-        verifyScriptUrl: "", // Removed from source code for privacy
-        showPartnerLogo: true, // BGMI official logo toggle
+        upiIds: [ { id: "BHARATPE2B0G0R6K4Z35741@unitype", active: true } ], // Now an array for load balancing
+        appsScriptUrl: "", 
+        discordWebhookUrl: "",
+        verifyScriptUrl: "", 
+        showPartnerLogo: true, 
+        showFooterKrafton: true, // Krafton toggle
         trialPacks: [ { uc: 13, price: 5 } ],
         bulkPacks: [
             { uc: 1800, price: 300 },
@@ -1147,7 +1158,15 @@
     };
 
     window.siteConfig = JSON.parse(localStorage.getItem('ucifyAdminConfig')) || defaultAdminConfig;
-    window.UPIVPA = window.siteConfig.upiId;
+    
+    // Migration for backward compatibility (Converting old upiId string to upiIds array)
+    if(window.siteConfig.upiId && !window.siteConfig.upiIds) {
+        window.siteConfig.upiIds = [{ id: window.siteConfig.upiId, active: true }];
+        delete window.siteConfig.upiId;
+    }
+    if(window.siteConfig.showFooterKrafton === undefined) {
+        window.siteConfig.showFooterKrafton = true; // Default true
+    }
 
     let currentStep = 1;
     let selectedPack = null;
@@ -1163,9 +1182,14 @@
     window.applyUISettings = function() {
         const partnerBlock = document.getElementById('partnerBlock');
         if(partnerBlock) {
-            // Agar purane DB config me showPartnerLogo nahi hai, toh default 'true' maano
             const showLogo = window.siteConfig.showPartnerLogo !== false; 
             partnerBlock.style.display = showLogo ? 'block' : 'none';
+        }
+
+        const footerKrafton = document.getElementById('footerKrafton');
+        if(footerKrafton) {
+            const showKrafton = window.siteConfig.showFooterKrafton !== false;
+            footerKrafton.style.display = showKrafton ? 'block' : 'none';
         }
     };
 
@@ -1224,14 +1248,57 @@
     }
 
     function openAdminPanel() {
-        document.getElementById('adminUpiId').value = window.siteConfig.upiId || "";
         document.getElementById('adminSheetUrl').value = window.siteConfig.appsScriptUrl || "";
         document.getElementById('adminDiscordUrl').value = window.siteConfig.discordWebhookUrl || "";
         document.getElementById('adminVerifyUrl').value = window.siteConfig.verifyScriptUrl || "";
         document.getElementById('adminShowLogo').checked = window.siteConfig.showPartnerLogo !== false;
+        document.getElementById('adminShowKrafton').checked = window.siteConfig.showFooterKrafton !== false;
         
+        window.renderAdminUpiList();
         window.renderAdminPacksList();
         window.openModal('adminPanelModal');
+    }
+
+    // UPI List rendering & handling
+    window.renderAdminUpiList = function() {
+        if(!document.getElementById('adminUpiList')) return;
+        const upis = window.siteConfig.upiIds || [];
+        
+        const renderList = upis.map((u, index) => `
+            <div class="admin-input-group" style="justify-content: space-between; background: rgba(0, 224, 255, 0.05); border: 1px solid rgba(0, 224, 255, 0.1);">
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden;">
+                    <input type="checkbox" ${u.active ? 'checked' : ''} onchange="toggleUpiActive(${index})" style="width: 18px; height: 18px; accent-color: var(--primary); cursor:pointer; flex-shrink: 0;" title="Tick to active for load balancing">
+                    <span style="font-size: 13px; color: ${u.active ? '#fff' : '#666'}; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-weight: ${u.active ? 'bold' : 'normal'};" title="${u.id}">${u.id}</span>
+                </div>
+                <button class="btn" style="background:var(--error); padding: 8px; width: 40px; flex-shrink: 0;" onclick="removeUpi(${index})"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+        document.getElementById('adminUpiList').innerHTML = renderList;
+    }
+
+    window.toggleUpiActive = function(index) {
+        if(window.siteConfig.upiIds[index]) {
+            window.siteConfig.upiIds[index].active = !window.siteConfig.upiIds[index].active;
+            window.renderAdminUpiList();
+        }
+    }
+
+    window.removeUpi = function(index) {
+        window.siteConfig.upiIds.splice(index, 1);
+        window.renderAdminUpiList();
+    }
+
+    window.addNewUpi = function() {
+        const upiInput = document.getElementById('newUpiId');
+        const val = upiInput.value.trim();
+        if(val) {
+            if(!window.siteConfig.upiIds) window.siteConfig.upiIds = [];
+            window.siteConfig.upiIds.push({id: val, active: true});
+            upiInput.value = '';
+            window.renderAdminUpiList();
+        } else {
+            alert("Please enter a valid UPI ID");
+        }
     }
 
     window.renderAdminPacksList = function() {
@@ -1280,12 +1347,13 @@
         btn.disabled = true;
 
         // Collect data from inputs
-        window.siteConfig.upiId = document.getElementById('adminUpiId').value;
-        window.UPIVPA = window.siteConfig.upiId;
         window.siteConfig.appsScriptUrl = document.getElementById('adminSheetUrl').value.trim();
         window.siteConfig.discordWebhookUrl = document.getElementById('adminDiscordUrl').value.trim();
         window.siteConfig.verifyScriptUrl = document.getElementById('adminVerifyUrl').value.trim();
         window.siteConfig.showPartnerLogo = document.getElementById('adminShowLogo').checked;
+        window.siteConfig.showFooterKrafton = document.getElementById('adminShowKrafton').checked;
+        
+        // Note: UPI list is already saved directly into siteConfig via addNewUpi/toggle/remove functions
         
         // Save to local as fallback backup
         localStorage.setItem('ucifyAdminConfig', JSON.stringify(window.siteConfig));
@@ -1616,6 +1684,7 @@
 
     document.getElementById('backToDetails').onclick = () => showStep(1);
 
+    // DYNAMIC UPI LOAD BALANCER
     document.getElementById('next2').onclick = function(){
       const randomDecimal = (Math.floor(Math.random() * 99) + 1) / 100;
       const exactPrice = parseFloat(selectedPack.price) + randomDecimal;
@@ -1641,7 +1710,15 @@
       qrImage.style.display = 'none';
       loader.style.display = 'block';
 
-      const upiString = `upi://pay?pa=${window.UPIVPA}&pn=UCify%20Store&am=${exactPriceStr}&cu=INR`;
+      // Load Balancing Logic (Picking random active UPI ID)
+      let activeUpis = window.siteConfig.upiIds ? window.siteConfig.upiIds.filter(u => u.active) : [];
+      if(activeUpis.length === 0) {
+          // Fallback if none are active or array is empty
+          activeUpis = [{id: "BHARATPE2B0G0R6K4Z35741@unitype"}];
+      }
+      const randomUpi = activeUpis[Math.floor(Math.random() * activeUpis.length)].id;
+
+      const upiString = `upi://pay?pa=${randomUpi}&pn=UCify%20Store&am=${exactPriceStr}&cu=INR`;
       const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}&margin=10`;
       
       qrImage.src = qrUrl;
