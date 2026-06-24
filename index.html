@@ -136,7 +136,7 @@
     }
 
     /* --- TRUST BADGES & LOGO --- */
-    .partner-block { margin-top: 15px; }
+    .partner-block { margin-top: 15px; transition: all 0.3s ease; }
     
     .partner-badge {
       display: inline-flex;
@@ -726,7 +726,8 @@
         <img src="ucify.webp" alt="UCify Logo" class="logo-img" draggable="false" style="pointer-events: auto; cursor: pointer;" onclick="handleLogoClick()">
         <p class="tagline">BGMI UC • Lightning-fast delivery</p>
 
-        <div class="partner-block">
+        <!-- Id added for toggling from admin panel -->
+        <div class="partner-block" id="partnerBlock">
           <img src="bgmi-official.webp" alt="BGMI Official" class="official-logo" draggable="false">
         </div>
 
@@ -983,11 +984,33 @@
            <h3>Admin Control Panel</h3>
            <button class="close-btn" onclick="closeModal('adminPanelModal')"><i class="fas fa-times"></i></button>
        </div>
-       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+       <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
           <!-- UPI Settings -->
           <h4>UPI ID Setting</h4>
           <div class="form-group">
              <input type="text" class="form-input" id="adminUpiId" value="...">
+          </div>
+          
+          <!-- API Settings (Naye Google Sheet, Discord aadi backend options) -->
+          <h4>Backend API Links</h4>
+          <div class="form-group">
+             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Google Sheet (Order tracking)</label>
+             <input type="text" class="form-input" id="adminSheetUrl" placeholder="Enter Apps Script URL" style="font-size:12px; padding:12px;">
+          </div>
+          <div class="form-group">
+             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Discord Webhook (Order Alerts)</label>
+             <input type="text" class="form-input" id="adminDiscordUrl" placeholder="Enter Webhook URL" style="font-size:12px; padding:12px;">
+          </div>
+          <div class="form-group">
+             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Payment Verify API</label>
+             <input type="text" class="form-input" id="adminVerifyUrl" placeholder="Enter Verify Script URL" style="font-size:12px; padding:12px;">
+          </div>
+
+          <!-- UI Settings (BGMI Logo Toggle) -->
+          <h4>UI Settings</h4>
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: var(--radius-sm);">
+             <input type="checkbox" id="adminShowLogo" style="width: 18px; height: 18px; accent-color: var(--primary);">
+             <label for="adminShowLogo" style="color: #fff; font-size: 14px; cursor: pointer;">Show BGMI Official Logo</label>
           </div>
           
           <!-- Manage Trial Packs -->
@@ -1022,19 +1045,17 @@
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 🔴 IMPORTANT FOR YOUR OWN WEBSITE 🔴
-    // Jab aap is code ko apne cPanel ya Hosting me daalein, toh neeche apni Firebase configuration zarur dalein!
-    // Firebase me ek naya project banayein -> Firestore Database aur Anonymous Auth chalu karein -> API keys yaha paste karein.
-    const firebaseConfig = {
-  apiKey: "AIzaSyCBNZV_Tp3NqCBed-PRW2nXOzSILVQq4iY",
-  authDomain: "ucify-store.firebaseapp.com",
-  projectId: "ucify-store",
-  storageBucket: "ucify-store.firebasestorage.app",
-  messagingSenderId: "747484525638",
-  appId: "1:747484525638:web:7f185399c21655b5bc0647"
-};
+    let firebaseConfig = {
+      apiKey: "AIzaSyCBNZV_Tp3NqCBed-PRW2nXOzSILVQq4iY",
+      authDomain: "ucify-store.firebaseapp.com",
+      projectId: "ucify-store",
+      storageBucket: "ucify-store.firebasestorage.app",
+      messagingSenderId: "747484525638",
+      appId: "1:747484525638:web:7f185399c21655b5bc0647"
+    };
+    
+    let appId = firebaseConfig.appId;
 
-    // Ye Canvas preview ko support karne ke liye hai, ise mat hatana
     if (typeof __firebase_config !== 'undefined') {
         firebaseConfig = JSON.parse(__firebase_config);
         appId = typeof __app_id !== 'undefined' ? __app_id : appId;
@@ -1050,11 +1071,9 @@
         console.warn("Firebase config is missing or invalid. Using local storage mode only.");
     }
 
-    // Yeh function aapke Admin Panel ke Save button se call hoga
     window.saveConfigToDB = async function(newConfig) {
         if(!db || !auth.currentUser) return false;
         try {
-            // Hum Firebase Firestore me data save kar rahe hain
             const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'ucifyConfig', 'main');
             await setDoc(configRef, newConfig);
             return true;
@@ -1079,26 +1098,23 @@
 
     initAuth();
 
-    // Jab database connect hoga, live listener shuru ho jayega
     if(auth && db) {
         onAuthStateChanged(auth, (user) => {
             if (!user) return;
             
-            // Ye live listener hai. Kisi ne bhi database update kiya, toh yaha alert aayega
             const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'ucifyConfig', 'main');
             onSnapshot(configRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const dbConfig = docSnap.data();
-                    // Global variables ko naye data se update karna
                     window.siteConfig = dbConfig;
                     window.UPIVPA = dbConfig.upiId;
                     
                     // Bina refresh kiye UI update karna
+                    if(typeof window.applyUISettings === 'function') window.applyUISettings();
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
                     if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
-                    console.log("Website packs updated live from database!");
+                    console.log("Website configuration updated live from database!");
                 } else {
-                    // Agar pehli baar hai database me kuch nahi hai, toh default save kardo
                     if(window.siteConfig) {
                         window.saveConfigToDB(window.siteConfig);
                     }
@@ -1113,8 +1129,14 @@
   <!-- SCRIPT 2: NORMAL WEBSITE LOGIC -->
   <script>
     // --- ADMIN SYSTEM VARIABLES ---
+    // Yaha se sabhi private URLs hata diye gaye hain taaki source code me koi na dekh sake.
+    // Ye URLs ab seedha Firebase Database se live fetch honge.
     const defaultAdminConfig = {
         upiId: "BHARATPE2B0G0R6K4Z35741@unitype",
+        appsScriptUrl: "", // Removed from source code for privacy
+        discordWebhookUrl: "", // Removed from source code for privacy
+        verifyScriptUrl: "", // Removed from source code for privacy
+        showPartnerLogo: true, // BGMI official logo toggle
         trialPacks: [ { uc: 13, price: 5 } ],
         bulkPacks: [
             { uc: 1800, price: 300 },
@@ -1124,18 +1146,8 @@
         ]
     };
 
-    // Pehle localStorage se uthao (fast loading ke liye), fir DB se live update hoga
     window.siteConfig = JSON.parse(localStorage.getItem('ucifyAdminConfig')) || defaultAdminConfig;
     window.UPIVPA = window.siteConfig.upiId;
-
-    // --- 1. YOUR OLD GOOGLE SHEET FOR PACK TRACKING (Untouched) ---
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec"; 
-
-    // --- 2. DISCORD WEBHOOK FOR ORDER ALERTS ---
-    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1516406944481542185/7zyh3P5Mj1tYUDmLQfFGEfTD2KLhE-t6hK4pJA6Kk_TxpbsEPi8QiJaWrcJFmMhWsgki";
-
-    // --- 3. SMS VERIFICATION APP SCRIPT URL ---
-    const VERIFY_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
 
     let currentStep = 1;
     let selectedPack = null;
@@ -1146,6 +1158,16 @@
     let timerSeconds = 900;
     let currentUid = "";
     let currentIgn = "";
+
+    // --- UI SETTINGS APP ---
+    window.applyUISettings = function() {
+        const partnerBlock = document.getElementById('partnerBlock');
+        if(partnerBlock) {
+            // Agar purane DB config me showPartnerLogo nahi hai, toh default 'true' maano
+            const showLogo = window.siteConfig.showPartnerLogo !== false; 
+            partnerBlock.style.display = showLogo ? 'block' : 'none';
+        }
+    };
 
     // --- BGM AUDIO SETUP ---
     const bgm = document.getElementById('bgmAudio');
@@ -1202,7 +1224,12 @@
     }
 
     function openAdminPanel() {
-        document.getElementById('adminUpiId').value = window.siteConfig.upiId;
+        document.getElementById('adminUpiId').value = window.siteConfig.upiId || "";
+        document.getElementById('adminSheetUrl').value = window.siteConfig.appsScriptUrl || "";
+        document.getElementById('adminDiscordUrl').value = window.siteConfig.discordWebhookUrl || "";
+        document.getElementById('adminVerifyUrl').value = window.siteConfig.verifyScriptUrl || "";
+        document.getElementById('adminShowLogo').checked = window.siteConfig.showPartnerLogo !== false;
+        
         window.renderAdminPacksList();
         window.openModal('adminPanelModal');
     }
@@ -1218,8 +1245,8 @@
             </div>
         `).join('');
 
-        document.getElementById('adminTrialPacksList').innerHTML = renderList(window.siteConfig.trialPacks, 'trialPacks');
-        document.getElementById('adminBulkPacksList').innerHTML = renderList(window.siteConfig.bulkPacks, 'bulkPacks');
+        document.getElementById('adminTrialPacksList').innerHTML = renderList(window.siteConfig.trialPacks || [], 'trialPacks');
+        document.getElementById('adminBulkPacksList').innerHTML = renderList(window.siteConfig.bulkPacks || [], 'bulkPacks');
     }
 
     window.updatePack = function(type, index, field, value) {
@@ -1252,8 +1279,13 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Live...';
         btn.disabled = true;
 
+        // Collect data from inputs
         window.siteConfig.upiId = document.getElementById('adminUpiId').value;
         window.UPIVPA = window.siteConfig.upiId;
+        window.siteConfig.appsScriptUrl = document.getElementById('adminSheetUrl').value.trim();
+        window.siteConfig.discordWebhookUrl = document.getElementById('adminDiscordUrl').value.trim();
+        window.siteConfig.verifyScriptUrl = document.getElementById('adminVerifyUrl').value.trim();
+        window.siteConfig.showPartnerLogo = document.getElementById('adminShowLogo').checked;
         
         // Save to local as fallback backup
         localStorage.setItem('ucifyAdminConfig', JSON.stringify(window.siteConfig));
@@ -1279,7 +1311,7 @@
             btn.style.color = '#000';
             btn.disabled = false;
             window.closeModal('adminPanelModal');
-            // Live update rendering function calls automatically inside Firebase snapshot
+            window.applyUISettings(); // DB listener might take a sec, apply UI instantly
         }, 1500);
     }
 
@@ -1293,21 +1325,25 @@
         trialGrid.innerHTML = '';
         bulkGrid.innerHTML = '';
 
-        window.siteConfig.trialPacks.forEach(pack => {
-            trialGrid.innerHTML += `
-              <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
-                <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
-                <div class="pack-price">₹${pack.price}</div>
-              </div>`;
-        });
+        if(window.siteConfig.trialPacks) {
+            window.siteConfig.trialPacks.forEach(pack => {
+                trialGrid.innerHTML += `
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
+                    <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
+                    <div class="pack-price">₹${pack.price}</div>
+                  </div>`;
+            });
+        }
 
-        window.siteConfig.bulkPacks.forEach(pack => {
-            bulkGrid.innerHTML += `
-              <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
-                <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
-                <div class="pack-price">₹${pack.price}</div>
-              </div>`;
-        });
+        if(window.siteConfig.bulkPacks) {
+            window.siteConfig.bulkPacks.forEach(pack => {
+                bulkGrid.innerHTML += `
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
+                    <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
+                    <div class="pack-price">₹${pack.price}</div>
+                  </div>`;
+            });
+        }
         
         attachPackListeners();
     }
@@ -1373,6 +1409,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initParticles();
+      window.applyUISettings(); // UI changes reflect at boot
       window.renderSitePacks(); 
       document.getElementById('next1').disabled = true;
     });
@@ -1380,7 +1417,9 @@
     const gamingNames = [ "亗『MÂFÎÂ亗", "TOXIC彡KD", "77・playzYT", "SK๛play๛Live", "千ムＩＲＹＹ", "IQōShāDøwW", "LÙÇÍFËR〆", "Mâhïmâ", "DEMØN丨DEEPAK", "亗CZxAnurag亗", "FRSTxZGOD", "FGxWONGPLAYzzz", "GÕD〤RÚSHÈR", "IGメABHAY", "MR々ŁEGENÐ", "VÌNNÍ乂PLAYZ", "KGF๛OP亗×", "ROYALツKUNAL20", "『RÁGNÁR』", "GLXY丨DANGER", "SHADOW๛RIVEN", "會DAKU父", "LEGEND丶OPP", "SAʀDAʀJi", "HAWK么HARSH", "ZMCxSHREY", "K4气KALAAKAR", "『AIMGOD』1", "T乛Rex乛RAVAN", "Ē・ＶＥＮＯＭ", "๛『Vëgêtå", "4A乛M丨SNOW", "٭ɞALPHAʚ٭", "im๛PANDA", "SGLxShivam", "乛GameīxīOM", "・Ｄ卄マＵＶ・", "『EPC』KRXSNA", "ＦｒＯｚｅＮ", "๛Ðʀʌɢo", "ＹＡＳＨīě", "ＳＨＵ及Ｈ", "XT个『Farhan』", "D£ATH๛SLAYER", "『LAKSHYÀ』", "中ツWARRIORYT", "Vns๛Rahul", "EQZxJOKERyt", "ReFLeXツVENOM", "冬ＧＡＢＢＡＲ" ];
 
     function getSocialUcPacks() {
-        return [...window.siteConfig.trialPacks, ...window.siteConfig.bulkPacks].map(p => p.uc + " UC");
+        const tPacks = window.siteConfig.trialPacks || [];
+        const bPacks = window.siteConfig.bulkPacks || [];
+        return [...tPacks, ...bPacks].map(p => p.uc + " UC");
     }
 
     function showSocialProof(){
@@ -1522,9 +1561,10 @@
     });
 
     async function fetchPurchasedPacks(uid) {
-        if(!APPS_SCRIPT_URL) return [];
+        const sheetUrl = window.siteConfig.appsScriptUrl || "";
+        if(!sheetUrl) return [];
         try {
-            const response = await fetch(`${APPS_SCRIPT_URL}?uid=${uid}`);
+            const response = await fetch(`${sheetUrl}?uid=${uid}`);
             const data = await response.json();
             return data.purchased || [];
         } catch (e) { return []; }
@@ -1559,7 +1599,9 @@
            if(!card.classList.contains('purchased')) trialPackVisible = true;
         });
 
-        if (!trialPackVisible && window.siteConfig.trialPacks.length > 0) {
+        const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
+        
+        if (!trialPackVisible && tPacksCount > 0) {
             if(trialTitle) trialTitle.style.display = 'none';
             if(trialGrid) trialGrid.style.display = 'none';
         } else {
@@ -1641,13 +1683,15 @@
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
         
         paymentVerificationInterval = setInterval(async () => {
-            if(VERIFY_SCRIPT_URL === "YOUR_NEW_GOOGLE_APP_SCRIPT_URL_HERE") {
+            const verifyUrl = window.siteConfig.verifyScriptUrl || "";
+            
+            if(!verifyUrl || verifyUrl === "YOUR_NEW_GOOGLE_APP_SCRIPT_URL_HERE") {
                 console.log(`Polling simulated: Waiting for backend API to verify exact amount ₹${amountToCheck}...`);
                 return;
             }
 
             try {
-                const res = await fetch(`${VERIFY_SCRIPT_URL}?amount=${amountToCheck}`);
+                const res = await fetch(`${verifyUrl}?amount=${amountToCheck}`);
                 const data = await res.json();
                 
                 if(data.verified) {
@@ -1686,18 +1730,20 @@
                                    `**Time:** ${time}`;
 
             try {
-                if(DISCORD_WEBHOOK_URL !== "YOUR_DISCORD_WEBHOOK_URL_HERE") {
-                    await fetch(DISCORD_WEBHOOK_URL, { 
+                const webhookUrl = window.siteConfig.discordWebhookUrl || "";
+                if(webhookUrl && webhookUrl !== "YOUR_DISCORD_WEBHOOK_URL_HERE") {
+                    await fetch(webhookUrl, { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ content: messageContent })
                     });
                 }
                 
-                if(APPS_SCRIPT_URL) {
+                const sheetUrl = window.siteConfig.appsScriptUrl || "";
+                if(sheetUrl) {
                    try {
                       const sheetData = { uid: currentUid, uc: selectedPack.uc };
-                      await fetch(APPS_SCRIPT_URL, {
+                      await fetch(sheetUrl, {
                           method: 'POST',
                           mode: 'no-cors', 
                           headers: {'Content-Type': 'application/json'},
