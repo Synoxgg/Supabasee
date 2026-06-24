@@ -969,8 +969,8 @@
        </div>
        <div class="modal-body">
           <div class="form-group">
-             <label class="form-label">Admin ID or Username</label>
-             <input type="text" class="form-input" id="adminUser" placeholder="Enter Admin Username">
+             <label class="form-label">Admin ID or Email</label>
+             <input type="text" class="form-input" id="adminUser" placeholder="Enter Admin ID">
           </div>
           <div class="form-group">
              <label class="form-label">Password</label>
@@ -1150,21 +1150,6 @@
              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;"><input type="checkbox" id="adminShowContact" class="admin-toggle-box"><label for="adminShowContact" style="color: #fff; font-size: 13px; font-weight: bold; cursor: pointer;">Show Contact Us</label></div>
              <textarea class="form-input" id="adminContentContact" rows="3" style="font-size:12px; padding:10px; line-height: 1.4; resize: vertical;"></textarea>
           </div>
-
-          <!-- API Settings -->
-          <h4 class="admin-section-title">🔗 Backend API Links</h4>
-          <div class="form-group">
-             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Google Sheet (Order tracking)</label>
-             <input type="text" class="form-input" id="adminSheetUrl" placeholder="Enter Apps Script URL" style="font-size:12px; padding:12px;">
-          </div>
-          <div class="form-group">
-             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Discord Webhook (Order Alerts)</label>
-             <input type="text" class="form-input" id="adminDiscordUrl" placeholder="Enter Webhook URL" style="font-size:12px; padding:12px;">
-          </div>
-          <div class="form-group">
-             <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Payment Verify API</label>
-             <input type="text" class="form-input" id="adminVerifyUrl" placeholder="Enter Verify Script URL" style="font-size:12px; padding:12px;">
-          </div>
           
           <!-- Manage Trial Packs -->
           <h4 class="admin-section-title">📦 Manage Trial Packs</h4>
@@ -1292,16 +1277,12 @@
   <script>
     // --- ADMIN SYSTEM VARIABLES ---
     const defaultAdminConfig = {
-        // Base64 Encoded Default Admin Credentials
-        // This keeps plain text out of source code completely
+        // Base64 Encoded Default Admin Credentials (synox / moontage)
         adminAuth: {
             u: "c3lub3g=", 
             p: "bW9vbnRhZ2U=" 
         },
-        upiIds: [], // Empty array triggers maintenance mode by default until admin adds one
-        appsScriptUrl: "", 
-        discordWebhookUrl: "",
-        verifyScriptUrl: "", 
+        upiIds: [], 
         // SHOP TIMINGS (24hr format)
         shopTiming: {
             startHour: 0, // 00:00 Midnight
@@ -1580,10 +1561,8 @@
         document.getElementById('adminSetUser').value = "";
         document.getElementById('adminSetPass').value = "";
 
-        // API Links
-        document.getElementById('adminSheetUrl').value = window.siteConfig.appsScriptUrl || "";
-        document.getElementById('adminDiscordUrl').value = window.siteConfig.discordWebhookUrl || "";
-        document.getElementById('adminVerifyUrl').value = window.siteConfig.verifyScriptUrl || "";
+        // API Links (Keep for reference but not actually used by fetch anymore due to hardcoding)
+        // Hardcoded in HTML logic directly below
         
         // Load Shop Timings
         document.getElementById('adminNightStart').value = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
@@ -1769,12 +1748,7 @@
             window.siteConfig.adminAuth = { u: btoa(newU), p: btoa(newP) };
         }
 
-        // Collect link data
-        window.siteConfig.appsScriptUrl = document.getElementById('adminSheetUrl').value.trim();
-        window.siteConfig.discordWebhookUrl = document.getElementById('adminDiscordUrl').value.trim();
-        window.siteConfig.verifyScriptUrl = document.getElementById('adminVerifyUrl').value.trim();
-        
-        // Collect Shop Timings
+        // Shop Timings
         window.siteConfig.shopTiming.startHour = parseInt(document.getElementById('adminNightStart').value) || 0;
         window.siteConfig.shopTiming.endHour = parseInt(document.getElementById('adminNightEnd').value) || 9;
 
@@ -1980,7 +1954,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initParticles();
-      window.applyUISettings(); // UI changes reflect at boot
+      window.applyUISettings(); 
       window.renderSitePacks(); 
       document.getElementById('next1').disabled = true;
     });
@@ -1994,7 +1968,7 @@
     }
 
     function showSocialProof(){
-      if(!allowSocialProofPopup) return; // Admin toggle check
+      if(!allowSocialProofPopup) return; 
       const ucPacksList = getSocialUcPacks();
       if(ucPacksList.length === 0) return;
       const randomName = gamingNames[Math.floor(Math.random() * gamingNames.length)];
@@ -2132,14 +2106,25 @@
         checkStep1Validation();
     });
 
+    // ==========================================
+    // UPDATED FETCH LOGIC WITH HARDCODED URLS
+    // ==========================================
+    
+    // HARDCODED API URLS
+    const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
+    const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
+    const HARDCODED_WEBHOOK_URL = "https://discord.com/api/webhooks/1516406944481542185/7zyh3P5Mj1tYUDmLQfFGEfTD2KLhE-t6hK4pJA6Kk_TxpbsEPi8QiJaWrcJFmMhWsgki";
+
     async function fetchPurchasedPacks(uid) {
-        const sheetUrl = window.siteConfig.appsScriptUrl || "";
-        if(!sheetUrl) return [];
         try {
-            const response = await fetch(`${sheetUrl}?uid=${uid}`);
+            // Using Hardcoded URL 1 for checking UID
+            const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`);
             const data = await response.json();
             return data.purchased || [];
-        } catch (e) { return []; }
+        } catch (e) { 
+            console.error("UID Check Error:", e);
+            return []; 
+        }
     }
 
     document.getElementById('next1').onclick = async () => {
@@ -2190,18 +2175,15 @@
 
     // --- SMART PAYMENT PROCESSING ---
     document.getElementById('next2').onclick = function(){
-      // Check active UPIs First
       let activeUpis = window.siteConfig.upiIds ? window.siteConfig.upiIds.filter(u => u.active) : [];
       
-      // LOGIC FOR MAINTENANCE MODE (No Active UPIs)
       if (activeUpis.length === 0) {
           document.getElementById('normalPaymentUI').style.display = 'none';
           document.getElementById('maintenanceUI').style.display = 'block';
           showStep(3);
-          return; // Stop the function here, no QR generated
+          return; 
       }
 
-      // LOGIC FOR NORMAL PAYMENT MODE
       document.getElementById('normalPaymentUI').style.display = 'block';
       document.getElementById('maintenanceUI').style.display = 'none';
 
@@ -2212,7 +2194,7 @@
       const amountEl = document.getElementById('paymentAmount');
       amountEl.textContent = '₹' + exactPriceStr;
       
-      window.injectDynamicStatusUI(); // Inject waiting status HTML with config texts
+      window.injectDynamicStatusUI(); 
       
       orderId = generateOrderId();
       
@@ -2229,7 +2211,6 @@
       qrImage.style.display = 'none';
       loader.style.display = 'block';
 
-      // Pick Random Active UPI ID
       const randomUpi = activeUpis[Math.floor(Math.random() * activeUpis.length)].id;
 
       const upiString = `upi://pay?pa=${randomUpi}&pn=UCify%20Store&am=${exactPriceStr}&cu=INR`;
@@ -2255,7 +2236,7 @@
     document.getElementById('back3').onclick = () => {
       if(qrTimer) clearInterval(qrTimer);
       if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-      window.injectDynamicStatusUI(); // Reset verification UI using dynamic text
+      window.injectDynamicStatusUI(); 
       showStep(2);
     };
 
@@ -2263,15 +2244,9 @@
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
         
         paymentVerificationInterval = setInterval(async () => {
-            const verifyUrl = window.siteConfig.verifyScriptUrl || "";
-            
-            if(!verifyUrl || verifyUrl === "YOUR_NEW_GOOGLE_APP_SCRIPT_URL_HERE") {
-                console.log(`Polling simulated: Waiting for backend API to verify exact amount ₹${amountToCheck}...`);
-                return;
-            }
-
             try {
-                const res = await fetch(`${verifyUrl}?amount=${amountToCheck}`);
+                // Using Hardcoded URL 2 for Verify API
+                const res = await fetch(`${HARDCODED_VERIFY_URL}?amount=${amountToCheck}&t=${Date.now()}`);
                 const data = await res.json();
                 
                 if(data.verified) {
@@ -2310,27 +2285,22 @@
                                    `**Time:** ${time}`;
 
             try {
-                const webhookUrl = window.siteConfig.discordWebhookUrl || "";
-                if(webhookUrl && webhookUrl !== "YOUR_DISCORD_WEBHOOK_URL_HERE") {
-                    await fetch(webhookUrl, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: messageContent })
-                    });
-                }
+                // Hardcoded Discord Webhook
+                await fetch(HARDCODED_WEBHOOK_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: messageContent })
+                }).catch(e => console.log("Webhook error", e));
                 
-                const sheetUrl = window.siteConfig.appsScriptUrl || "";
-                if(sheetUrl) {
-                   try {
-                      const sheetData = { uid: currentUid, uc: selectedPack.uc };
-                      await fetch(sheetUrl, {
-                          method: 'POST',
-                          mode: 'no-cors', 
-                          headers: {'Content-Type': 'application/json'},
-                          body: JSON.stringify(sheetData)
-                      });
-                   } catch(sheetErr) { console.log(sheetErr); }
-                }
+                // Hardcoded Sheet URL 1 for saving order
+                try {
+                    const sheetData = { uid: currentUid, uc: selectedPack.uc };
+                    await fetch(HARDCODED_SHEET_URL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'text/plain;charset=utf-8'}, 
+                        body: JSON.stringify(sheetData)
+                    });
+                } catch(sheetErr) { console.error("Order Save Error:", sheetErr); }
 
                 document.getElementById('orderIdText').textContent = orderId;
                 document.getElementById('receipt-pack').textContent = selectedPack.uc + " UC";
@@ -2343,7 +2313,6 @@
                 
                 localStorage.removeItem('bgmiTimerEnd');
                 
-                // Admin Custom Night Mode Check
                 const currentHour = getIndiaHour();
                 const startH = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
                 const endH = window.siteConfig.shopTiming.endHour !== undefined ? window.siteConfig.shopTiming.endHour : 9;
@@ -2352,7 +2321,6 @@
                 if (startH < endH) {
                     isNightTime = (currentHour >= startH && currentHour < endH);
                 } else {
-                    // Handles crossing midnight (e.g. 22:00 to 06:00)
                     isNightTime = (currentHour >= startH || currentHour < endH);
                 }
 
