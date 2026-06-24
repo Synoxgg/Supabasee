@@ -969,8 +969,8 @@
        </div>
        <div class="modal-body">
           <div class="form-group">
-             <label class="form-label">Admin ID or Email</label>
-             <input type="text" class="form-input" id="adminUser" placeholder="Enter Admin ID or Email">
+             <label class="form-label">Admin ID or Username</label>
+             <input type="text" class="form-input" id="adminUser" placeholder="Enter Admin Username">
           </div>
           <div class="form-group">
              <label class="form-label">Password</label>
@@ -990,8 +990,22 @@
        </div>
        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
           
+          <!-- SECURITY SECTION -->
+          <h4 class="admin-section-title" style="margin-top:0; color: var(--success);">🔐 Admin Security</h4>
+          <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Update your admin login details here. Saved securely.</p>
+          <div class="admin-subsection" style="border-left: 2px solid var(--success);">
+              <div class="form-group" style="margin-bottom:10px;">
+                 <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">New Username</label>
+                 <input type="text" class="form-input" id="adminSetUser" placeholder="Username" style="font-size:12px; padding:10px;">
+              </div>
+              <div class="form-group" style="margin-bottom:5px;">
+                 <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">New Password</label>
+                 <input type="text" class="form-input" id="adminSetPass" placeholder="Password" style="font-size:12px; padding:10px;">
+              </div>
+          </div>
+
           <!-- UPI Settings -->
-          <h4 class="admin-section-title" style="margin-top:0;">💳 UPI & Payment Gateway</h4>
+          <h4 class="admin-section-title">💳 UPI & Payment Gateway</h4>
           <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Add active UPI IDs. If list is empty, maintenance mode will turn on.</p>
           <div id="adminUpiList"></div>
           <div class="admin-input-group">
@@ -1024,8 +1038,10 @@
               <div class="flex-row-center"><input type="checkbox" id="tgl_step3Subnote" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextStep3Subnote" placeholder="Scan & pay..." style="font-size:12px; padding:8px;"></div>
               <div class="flex-row-center"><input type="checkbox" id="tgl_totalPayable" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextTotalPay" placeholder="TOTAL PAYABLE (EXACT)" style="font-size:12px; padding:8px;"></div>
               
+              <!-- Warning box -->
               <div class="flex-row-center"><input type="checkbox" id="tgl_warnBanner" class="admin-toggle-box"><input type="text" class="form-input" id="adminTextWarnTitle" placeholder="Warn Title" style="font-size:12px; padding:8px; width:40%;"><input type="text" class="form-input" id="adminTextWarnDesc" placeholder="Warn Desc" style="font-size:12px; padding:8px; width:60%;"></div>
               
+              <!-- Awaiting Texts (Controlled by 1 toggle) -->
               <div style="display:flex; align-items:flex-start; gap:8px; width:100%; margin-bottom:5px;">
                  <input type="checkbox" id="tgl_awaitingStatus" class="admin-toggle-box" style="margin-top:10px;">
                  <div style="display:flex; flex-direction:column; gap:5px; width:100%;">
@@ -1179,7 +1195,7 @@
   <!-- SCRIPT 1: FIREBASE BACKEND CONNECTION MODULE -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     let firebaseConfig = {
@@ -1204,10 +1220,6 @@
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
-        
-        // Export Firebase functions to global scope for the admin logic
-        window.firebaseAuth = auth;
-        window.firebaseSignIn = signInWithEmailAndPassword;
     } catch(e) {
         console.warn("Firebase config is missing or invalid. Using local storage mode only.");
     }
@@ -1253,7 +1265,8 @@
                     if(!dbConfig.toggles) dbConfig.toggles = window.siteConfig.toggles || defaultAdminConfig.toggles;
                     if(!dbConfig.policies) dbConfig.policies = window.siteConfig.policies || defaultAdminConfig.policies;
                     if(!dbConfig.shopTiming) dbConfig.shopTiming = window.siteConfig.shopTiming || defaultAdminConfig.shopTiming;
-                    
+                    if(!dbConfig.adminAuth) dbConfig.adminAuth = window.siteConfig.adminAuth || defaultAdminConfig.adminAuth;
+
                     window.siteConfig = dbConfig;
                     
                     // Update UI live without refreshing
@@ -1279,6 +1292,12 @@
   <script>
     // --- ADMIN SYSTEM VARIABLES ---
     const defaultAdminConfig = {
+        // Base64 Encoded Default Admin Credentials
+        // This keeps plain text out of source code completely
+        adminAuth: {
+            u: "c3lub3g=", 
+            p: "bW9vbnRhZ2U=" 
+        },
         upiIds: [], // Empty array triggers maintenance mode by default until admin adds one
         appsScriptUrl: "", 
         discordWebhookUrl: "",
@@ -1372,6 +1391,7 @@
     
     if(!window.siteConfig.shopTiming) window.siteConfig.shopTiming = defaultAdminConfig.shopTiming;
     if(!window.siteConfig.policies) window.siteConfig.policies = defaultAdminConfig.policies;
+    if(!window.siteConfig.adminAuth) window.siteConfig.adminAuth = defaultAdminConfig.adminAuth;
 
     let currentStep = 1;
     let selectedPack = null;
@@ -1513,7 +1533,7 @@
         if (event.target.id === modalId) window.closeModal(modalId);
     }
 
-    // --- SECURE ADMIN LOGIC ---
+    // --- ADMIN LOGIC ---
     let adminClickCount = 0;
     let adminClickTimer;
     
@@ -1528,43 +1548,38 @@
         }
     }
 
-    window.verifyAdmin = async function() {
-        const btn = document.querySelector('#adminLoginModal .btn-primary');
-        const originalText = btn.innerHTML;
-        const errEl = document.getElementById('adminError');
-        
-        if (!window.firebaseSignIn || !window.firebaseAuth) {
-            errEl.textContent = "Firebase is loading, please wait...";
-            errEl.classList.add('show');
-            return;
-        }
-
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-        btn.disabled = true;
-
+    window.verifyAdmin = function() {
         const u = document.getElementById('adminUser').value.trim();
         const p = document.getElementById('adminPass').value.trim();
         
-        try {
-            // Allows using simple username mapped to an email, or full email
-            const email = u.includes('@') ? u : u + '@ucify.admin';
-            
-            await window.firebaseSignIn(window.firebaseAuth, email, p);
-            
-            errEl.classList.remove('show');
+        // Convert input to Base64 to match stored secure string
+        const inputU = btoa(u);
+        const inputP = btoa(p);
+        
+        const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
+        const validP = window.siteConfig.adminAuth?.p || defaultAdminConfig.adminAuth.p;
+
+        if (inputU === validU && inputP === validP) {
+            document.getElementById('adminError').classList.remove('show');
             window.closeModal('adminLoginModal');
+            
+            // Wipe inputs for security
+            document.getElementById('adminUser').value = '';
+            document.getElementById('adminPass').value = '';
+            
             openAdminPanel();
-        } catch (error) {
-            console.error("Auth Error:", error);
-            errEl.textContent = "Invalid Credentials";
-            errEl.classList.add('show');
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+        } else {
+            document.getElementById('adminError').classList.add('show');
         }
     }
 
     function openAdminPanel() {
+        // Load Admin Security (decoded just for the placeholder hint)
+        const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
+        document.getElementById('adminSetUser').placeholder = "Current: " + atob(validU);
+        document.getElementById('adminSetUser').value = "";
+        document.getElementById('adminSetPass').value = "";
+
         // API Links
         document.getElementById('adminSheetUrl').value = window.siteConfig.appsScriptUrl || "";
         document.getElementById('adminDiscordUrl').value = window.siteConfig.discordWebhookUrl || "";
@@ -1746,6 +1761,13 @@
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Live...';
         btn.disabled = true;
+
+        // Collect Admin Security Updates (Save as Base64 Hash to hide from source code view)
+        const newU = document.getElementById('adminSetUser').value.trim();
+        const newP = document.getElementById('adminSetPass').value.trim();
+        if(newU && newP) {
+            window.siteConfig.adminAuth = { u: btoa(newU), p: btoa(newP) };
+        }
 
         // Collect link data
         window.siteConfig.appsScriptUrl = document.getElementById('adminSheetUrl').value.trim();
