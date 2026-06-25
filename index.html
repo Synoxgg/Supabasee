@@ -1072,7 +1072,7 @@
               
               <div id="adminRazorpayFields" style="margin-top: 15px;">
                   <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Payment Page Link</label>
-                  <input type="text" id="adminRazorpayLink" class="form-input" placeholder="https://pages.razorpay.com/..." style="font-size:12px; padding:10px; margin-bottom: 10px;">
+                  <input type="text" id="adminRazorpayLink" class="form-input" placeholder="https://razorpay.me/@yourname (Amount auto-fills)" style="font-size:12px; padding:10px; margin-bottom: 10px;">
                   
                   <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Webhook Google Sheet App URL</label>
                   <input type="text" id="adminRazorpayApi" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px; padding:10px;">
@@ -2376,8 +2376,18 @@
           document.getElementById('rzpExactAmountText').textContent = exactPriceStr;
           
           document.getElementById('rzpRedirectBtn').onclick = function() {
+              // Modifying the link to auto-fill the amount for razorpay.me URLs
+              let baseLink = window.siteConfig.razorpayLink.trim();
+              let redirectLink = baseLink;
+              
+              if (baseLink) {
+                  // Check if there are already parameters, and append the exact amount
+                  const separator = baseLink.includes('?') ? '&' : '?';
+                  redirectLink = `${baseLink}${separator}amount=${exactPriceStr}`;
+              }
+              
               // Opens Razorpay payment page in a new tab AND TRACKS IT in razorpayWindow variable
-              razorpayWindow = window.open(window.siteConfig.razorpayLink, '_blank');
+              razorpayWindow = window.open(redirectLink, '_blank');
           };
           
           // Poll the Razorpay Google Script
