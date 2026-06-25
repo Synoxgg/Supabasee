@@ -556,6 +556,20 @@
       display: none; /* Hidden by default */
     }
 
+    /* Smart Lock / Queue UI */
+    .lock-ui-box {
+      margin-top: 20px; 
+      padding: 20px; 
+      background: rgba(255, 184, 0, 0.05); 
+      border: 1px solid var(--primary); 
+      border-radius: var(--radius-md); 
+      text-align: center;
+      display: none; 
+    }
+    .lock-timer-text {
+      font-size: 24px; color: var(--primary); font-family: var(--font-display); font-weight: bold; margin: 10px 0; letter-spacing: 2px;
+    }
+
     /* --- SUCCESS (STEP 4) --- */
     .success-screen { text-align: center; }
     .success-icon { 
@@ -868,6 +882,18 @@
              <div style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Please try again later or contact support.</div>
           </div>
 
+          <!-- LOCK UI FOR RAZORPAY CLASH PREVENTION -->
+          <div id="lockUI" class="lock-ui-box">
+             <i class="fas fa-user-clock" style="font-size: 34px; color: var(--primary); margin-bottom: 12px;"></i>
+             <h3 style="color: #fff; font-family: var(--font-display); margin-bottom: 8px; font-size: 22px;">Gateway Busy</h3>
+             <p style="font-size: 13px; color: #ccc; margin-bottom: 15px; line-height: 1.4;">Another user is currently completing a payment for this specific pack. To prevent transaction mix-ups, please wait or use the instant UPI Gateway.</p>
+             <div class="lock-timer-text" id="lockUITimer">02:00</div>
+             <div class="btn-row" style="margin-top: 15px;">
+                <button class="btn btn-secondary" style="padding: 12px; font-size: 13px;" onclick="cancelLockWait()">Cancel</button>
+                <button class="btn btn-primary" style="padding: 12px; font-size: 13px;" onclick="checkLockAgain()">Check Again</button>
+             </div>
+          </div>
+
           <!-- NORMAL PAYMENT UI -->
           <div id="normalPaymentUI">
             <div style="font-size: 14px; margin-bottom: 5px; color: var(--text-muted);" id="dispTotalPayable">TOTAL PAYABLE (EXACT)</div>
@@ -899,8 +925,8 @@
                   Pay Now <i class="fas fa-external-link-alt" style="margin-left: 5px;"></i>
                </button>
                <div style="font-size:12px; color:#aaa; margin-top:15px; line-height: 1.4;">
-                  Clicking "Pay Now" will open the payment page in a new tab.<br>
-                  <strong style="color:var(--primary);">Please enter the exact amount (₹<span id="rzpExactAmountText"></span>)</strong> to allow automatic verification.
+                  Clicking "Pay Now" will securely open the payment page.<br>
+                  <strong style="color:var(--primary);">Amount (₹<span id="rzpExactAmountText"></span>) will be auto-filled.</strong>
                </div>
             </div>
 
@@ -1071,8 +1097,8 @@
               </select>
               
               <div id="adminRazorpayFields" style="margin-top: 15px;">
-                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Payment Page Link</label>
-                  <input type="text" id="adminRazorpayLink" class="form-input" placeholder="https://razorpay.me/@yourname (Amount auto-fills)" style="font-size:12px; padding:10px; margin-bottom: 10px;">
+                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Global / Base Link (Optional)</label>
+                  <input type="text" id="adminRazorpayLink" class="form-input" placeholder="https://razorpay.me/@ucify" style="font-size:12px; padding:10px; margin-bottom: 10px;">
                   
                   <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Webhook Google Sheet App URL</label>
                   <input type="text" id="adminRazorpayApi" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px; padding:10px;">
@@ -1227,11 +1253,11 @@
           </div>
           
           <!-- Manage Trial Packs -->
-          <h4 class="admin-section-title">📦 Manage Trial Packs</h4>
+          <h4 class="admin-section-title">📦 Manage Trial Packs (w/ Razorpay Links)</h4>
           <div id="adminTrialPacksList"></div>
           
           <!-- Manage Bulk Packs -->
-          <h4 class="admin-section-title">💎 Manage Bulk Packs</h4>
+          <h4 class="admin-section-title">💎 Manage Bulk Packs (w/ Razorpay Links)</h4>
           <div id="adminBulkPacksList"></div>
           
           <!-- Add New Pack -->
@@ -1260,7 +1286,7 @@
             loader.style.opacity = '0';
             setTimeout(() => {
                 loader.style.visibility = 'hidden';
-                loader.remove(); // Remove from DOM completely
+                loader.remove(); 
             }, 500);
         }
     }
@@ -1270,7 +1296,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     let firebaseConfig = {
       apiKey: "AIzaSyCBNZV_Tp3NqCBed-PRW2nXOzSILVQq4iY",
@@ -1288,16 +1314,47 @@
         appId = typeof __app_id !== 'undefined' ? __app_id : appId;
     }
 
-    // Initialize Firebase
     let app, auth, db;
     try {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
+        window.firebaseDb = db; // Exporting for lock logic
     } catch(e) {
         console.warn("Firebase config is missing or invalid. Using local storage mode only.");
-        hideInitialLoader(); // Failsafe
+        hideInitialLoader(); 
     }
+
+    // --- GLOBAL SMART LOCK SYSTEM FUNCTIONS ---
+    window.acquireLock = async function(amountStr, currentOrderId) {
+        if (!db) return true; // Fail-safe agar firebase na ho
+        try {
+            const lockRef = doc(db, 'artifacts', appId, 'public', 'data', 'payment_locks', amountStr);
+            const lockSnap = await getDoc(lockRef);
+            const now = Date.now();
+            
+            if (lockSnap.exists()) {
+                const lockData = lockSnap.data();
+                // 3 mins = 180000 ms. Agar purana hai to ignore.
+                if (now - lockData.timestamp < 180000 && lockData.orderId !== currentOrderId) {
+                    return false; // Locked by someone else
+                }
+            }
+            await setDoc(lockRef, { orderId: currentOrderId, timestamp: now });
+            return true;
+        } catch (e) {
+            console.error("Lock error:", e);
+            return true; // Let them through if network error
+        }
+    };
+
+    window.releaseLock = async function(amountStr) {
+        if (!db || !amountStr) return;
+        try {
+            const lockRef = doc(db, 'artifacts', appId, 'public', 'data', 'payment_locks', amountStr);
+            await deleteDoc(lockRef);
+        } catch (e) { }
+    };
 
     window.saveConfigToDB = async function(newConfig) {
         if(!db || !auth.currentUser) return false;
@@ -1321,7 +1378,7 @@
             }
         } catch (e) {
             console.error("Auth Error:", e);
-            hideInitialLoader(); // Failsafe
+            hideInitialLoader(); 
         }
     };
 
@@ -1336,40 +1393,42 @@
                 if (docSnap.exists()) {
                     const dbConfig = docSnap.data();
                     
-                    // Migrations
                     if(!dbConfig.texts) dbConfig.texts = window.siteConfig.texts || defaultAdminConfig.texts;
                     if(!dbConfig.toggles) dbConfig.toggles = window.siteConfig.toggles || defaultAdminConfig.toggles;
                     if(!dbConfig.policies) dbConfig.policies = window.siteConfig.policies || defaultAdminConfig.policies;
                     if(!dbConfig.shopTiming) dbConfig.shopTiming = window.siteConfig.shopTiming || defaultAdminConfig.shopTiming;
                     if(!dbConfig.adminAuth) dbConfig.adminAuth = window.siteConfig.adminAuth || defaultAdminConfig.adminAuth;
 
-                    // Razorpay defaults migration
                     if(!dbConfig.paymentMode) dbConfig.paymentMode = "upi";
                     if(dbConfig.razorpayLink === undefined) dbConfig.razorpayLink = "";
                     if(dbConfig.razorpayApiUrl === undefined) dbConfig.razorpayApiUrl = "";
+                    
+                    if(dbConfig.trialPacks) {
+                        dbConfig.trialPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
+                    }
+                    if(dbConfig.bulkPacks) {
+                        dbConfig.bulkPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
+                    }
 
                     window.siteConfig = dbConfig;
                     
-                    // Update UI live without refreshing
                     if(typeof window.applyUISettings === 'function') window.applyUISettings();
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
                     if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
                     if(typeof window.renderAdminUpiList === 'function') window.renderAdminUpiList();
                     if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI(); 
                     
-                    console.log("Website configuration updated live from database!");
                 } else {
                     if(window.siteConfig) {
                         window.saveConfigToDB(window.siteConfig);
                     }
                 }
                 
-                // Sab kuch set hone ke baad loader hata do
                 hideInitialLoader();
                 
             }, (error) => {
                 console.error("Live Database Listener Error:", error);
-                hideInitialLoader(); // Failsafe
+                hideInitialLoader(); 
             });
         });
     }
@@ -1379,21 +1438,12 @@
   <script>
     // --- ADMIN SYSTEM VARIABLES ---
     const defaultAdminConfig = {
-        // Base64 Encoded Default Admin Credentials (synox / moontage)
-        adminAuth: {
-            u: "c3lub3g=", 
-            p: "bW9vbnRhZ2U=" 
-        },
-        paymentMode: "upi", // Switch between "upi" and "razorpay"
+        adminAuth: { u: "c3lub3g=", p: "bW9vbnRhZ2U=" },
+        paymentMode: "upi", 
         razorpayLink: "",
         razorpayApiUrl: "", 
         upiIds: [], 
-        // SHOP TIMINGS (24hr format)
-        shopTiming: {
-            startHour: 0, // 00:00 Midnight
-            endHour: 9    // 09:00 AM
-        },
-        // ADVANCED TEXTS
+        shopTiming: { startHour: 0, endHour: 9 },
         texts: {
             tagline: "BGMI UC • Lightning-fast delivery",
             secureBadge: "Secure",
@@ -1415,8 +1465,6 @@
             maintenance: "Payment Gateway Under Maintenance",
             nightModeTitle: "Night Mode Active",
             nightModeDesc: "Instant delivery paused. UC will be credited after 9:00 AM.",
-            
-            // Success & Receipt Texts
             successTitle: "Order Confirmed",
             finalSuccessMsg: "UC Transfer Complete.",
             receiptTitle: "RECEIPT",
@@ -1427,23 +1475,14 @@
             lblTime: "Time",
             btnNewOrder: "Place Another Order"
         },
-        // General UI & Text Toggles
         toggles: {
-            // Text Toggles
             showTagline: true, showSecureBadge: true, showInstantBadge: true, showSupportBadge: true, showOrdersToday: true,
             showStep1Title: true, showStep2Title: true, showStep3Title: true,
             showStep3Subnote: true, showTotalPayable: true, showWarnBanner: true, showAwaitingStatus: true,
-            showUpiBannerText: true, showCancelBtn: true,
-            
-            // Success & Receipt Toggles
-            showSuccessTitle: true,
-            showReceipt: true,
-
-            // Component & Logic Toggles
+            showUpiBannerText: true, showCancelBtn: true, showSuccessTitle: true, showReceipt: true,
             showPartnerLogo: true, showSocialProof: true, showUpiApps: true, showFooterKrafton: true,
-            enableNightMode: true // Enables night closed logic
+            enableNightMode: true 
         },
-        // Policies Texts & Toggles
         policies: {
             showTerms: true, contentTerms: "<h4>1. Introduction</h4><p>By using this website, you agree to these Terms and Conditions. This platform provides digital top-up services for BGMI UC.</p><h4>2. Services Provided</h4><p>We facilitate the transfer of digital in-game currency (UC) to the provided Player UID. It is the user's responsibility to enter the correct UID.</p><h4>3. Payment</h4><p>All transactions are processed securely via our automated payment gateways. We do not store your credit card or banking details.</p><h4>4. User Responsibilities</h4><p>You must ensure the accuracy of the Player ID (UID) provided. Transactions processed to incorrect UIDs due to user error cannot be reversed.</p>",
             showPrivacy: true, contentPrivacy: "<h4>1. Information We Collect</h4><p>We collect your BGMI Player ID (UID) and In-Game Name (IGN) solely for the purpose of delivering the digital product. We process payments via secure gateways and do not store financial data.</p><h4>2. How We Use Your Data</h4><p>Your data is used strictly for order fulfillment, customer support, and transaction verification.</p><h4>3. Data Sharing</h4><p>We do not sell, trade, or rent user data to third parties. Information is only shared with our payment gateway as required to process your transaction.</p>",
@@ -1451,33 +1490,36 @@
             showShipping: true, contentShipping: "<h4>1. Delivery Method</h4><p>All deliveries are purely digital. No physical product will be shipped to your address.</p><h4>2. Delivery Time</h4><p>UC is typically credited to your account instantly or within 10-15 minutes. In case of server delays, please allow up to 24 hours for the transaction to reflect in your BGMI account.</p>",
             showContact: true, contentContact: "<h4>Get in Touch</h4><p>If you face any issues with your order, please contact our support team. Have your Order ID and Transaction ID ready.</p><ul><li><strong>Business Name:</strong> Krafton Inc</li><li><strong>Email Support:</strong> ucify.support@gmail.com</li><li><strong>Operating Hours:</strong> Mon - Sat, 10:00 AM to 7:00 PM</li></ul>"
         },
-        trialPacks: [ { uc: 13, price: 5 } ],
+        trialPacks: [ { uc: 13, price: 5, rzpLink: "" } ],
         bulkPacks: [
-            { uc: 1800, price: 300 },
-            { uc: 4200, price: 600 },
-            { uc: 9600, price: 1200 },
-            { uc: 14800, price: 1800 }
+            { uc: 1800, price: 300, rzpLink: "" },
+            { uc: 4200, price: 600, rzpLink: "" },
+            { uc: 9600, price: 1200, rzpLink: "" },
+            { uc: 14800, price: 1800, rzpLink: "" }
         ]
     };
 
     window.siteConfig = JSON.parse(localStorage.getItem('ucifyAdminConfig')) || defaultAdminConfig;
     
-    // Migration logic
     if(window.siteConfig.upiId && !window.siteConfig.upiIds) {
         window.siteConfig.upiIds = [{ id: window.siteConfig.upiId, active: true }];
         delete window.siteConfig.upiId;
     }
-    // Migration for Razorpay settings
     if(!window.siteConfig.paymentMode) window.siteConfig.paymentMode = "upi";
     if(window.siteConfig.razorpayLink === undefined) window.siteConfig.razorpayLink = "";
     if(window.siteConfig.razorpayApiUrl === undefined) window.siteConfig.razorpayApiUrl = "";
+    
+    if(window.siteConfig.trialPacks) {
+        window.siteConfig.trialPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
+    }
+    if(window.siteConfig.bulkPacks) {
+        window.siteConfig.bulkPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
+    }
 
     if(!window.siteConfig.texts) window.siteConfig.texts = defaultAdminConfig.texts;
-    // Fill missing texts securely
     for(let k in defaultAdminConfig.texts) { if(window.siteConfig.texts[k] === undefined) window.siteConfig.texts[k] = defaultAdminConfig.texts[k]; }
     
     if(!window.siteConfig.toggles) window.siteConfig.toggles = defaultAdminConfig.toggles;
-    // Fill missing toggles safely
     for(let k in defaultAdminConfig.toggles) { if(window.siteConfig.toggles[k] === undefined) window.siteConfig.toggles[k] = defaultAdminConfig.toggles[k]; }
     
     if(!window.siteConfig.shopTiming) window.siteConfig.shopTiming = defaultAdminConfig.shopTiming;
@@ -1488,28 +1530,19 @@
     let selectedPack = null;
     let exactPriceStr = "0.00"; 
     let orderId = null;
-    
-    // YAHAN MAGIC VARIABLE ADD KIYA HAI RAZORPAY TAB CLOSE KARNE KE LIYE
     let razorpayWindow = null; 
-    
     let qrTimer = null;
     let paymentVerificationInterval = null;
     let timerSeconds = 900;
+    let lockWaitTimer = null;
     let currentUid = "";
     let currentIgn = "";
     let allowSocialProofPopup = true;
 
-    // Helper to extract texts safely
-    function getText(key) {
-        return window.siteConfig.texts[key] || defaultAdminConfig.texts[key];
-    }
-    function getTgl(key) {
-        return window.siteConfig.toggles[key] !== false; // defaults true
-    }
+    function getText(key) { return window.siteConfig.texts[key] || defaultAdminConfig.texts[key]; }
+    function getTgl(key) { return window.siteConfig.toggles[key] !== false; }
 
-    // --- UI SETTINGS APP (Applies all dynamic text and toggles) ---
     window.applyUISettings = function() {
-        // Apply Texts
         document.getElementById('dispTagline').textContent = getText('tagline');
         document.getElementById('dispSecureBadge').textContent = getText('secureBadge');
         document.getElementById('dispInstantBadge').textContent = getText('instantBadge');
@@ -1531,7 +1564,6 @@
         document.getElementById('dispNightTitle').textContent = getText('nightModeTitle');
         document.getElementById('dispNightDesc').textContent = getText('nightModeDesc');
 
-        // Apply Success & Receipt Texts
         document.getElementById('dispSuccessTitle').textContent = getText('successTitle');
         document.getElementById('dispFinalSuccessMsg').textContent = getText('finalSuccessMsg');
         document.getElementById('dispReceiptTitle').textContent = getText('receiptTitle');
@@ -1542,7 +1574,6 @@
         document.getElementById('dispLblTime').textContent = getText('lblTime');
         document.getElementById('dispBtnNewOrder').textContent = getText('btnNewOrder');
 
-        // Apply Toggles (Visibility)
         document.getElementById('dispTagline').style.display = getTgl('showTagline') ? 'block' : 'none';
         document.getElementById('pillSecure').style.display = getTgl('showSecureBadge') ? 'flex' : 'none';
         document.getElementById('pillInstant').style.display = getTgl('showInstantBadge') ? 'flex' : 'none';
@@ -1563,20 +1594,17 @@
         document.getElementById('dispSuccessTitle').style.display = getTgl('showSuccessTitle') ? 'block' : 'none';
         document.getElementById('dispReceiptBox').style.display = getTgl('showReceipt') ? 'block' : 'none';
 
-        // General Components
         document.getElementById('partnerBlock').style.display = getTgl('showPartnerLogo') ? 'block' : 'none';
         document.getElementById('dispUpiAppsBanner').style.display = getTgl('showUpiApps') ? 'block' : 'none';
         document.getElementById('footerKrafton').style.display = getTgl('showFooterKrafton') ? 'block' : 'none';
         allowSocialProofPopup = getTgl('showSocialProof');
 
-        // Apply Policies Visibility
         document.getElementById('linkTerms').style.display = window.siteConfig.policies.showTerms ? 'inline-block' : 'none';
         document.getElementById('linkPrivacy').style.display = window.siteConfig.policies.showPrivacy ? 'inline-block' : 'none';
         document.getElementById('linkRefund').style.display = window.siteConfig.policies.showRefund ? 'inline-block' : 'none';
         document.getElementById('linkShipping').style.display = window.siteConfig.policies.showShipping ? 'inline-block' : 'none';
         document.getElementById('linkContact').style.display = window.siteConfig.policies.showContact ? 'inline-block' : 'none';
 
-        // Apply Policies Text Content
         document.getElementById('bodyTerms').innerHTML = window.siteConfig.policies.contentTerms || defaultAdminConfig.policies.contentTerms;
         document.getElementById('bodyPrivacy').innerHTML = window.siteConfig.policies.contentPrivacy || defaultAdminConfig.policies.contentPrivacy;
         document.getElementById('bodyRefund').innerHTML = window.siteConfig.policies.contentRefund || defaultAdminConfig.policies.contentRefund;
@@ -1584,7 +1612,6 @@
         document.getElementById('bodyContact').innerHTML = window.siteConfig.policies.contentContact || defaultAdminConfig.policies.contentContact;
     };
 
-    // Helper to inject the dynamic waiting status html
     window.injectDynamicStatusUI = function() {
         const vStatus = document.getElementById('verificationStatus');
         if(!vStatus || vStatus.style.background === "rgba(0, 255, 157, 0.1)") return; 
@@ -1601,175 +1628,85 @@
         `;
     }
 
-    // --- BGM AUDIO SETUP ---
     const bgm = document.getElementById('bgmAudio');
     bgm.volume = 0.3; 
-
-    function initAudio() {
-        if(bgm.paused) bgm.play().catch(e => console.log("Audio waiting for interaction"));
-    }
+    function initAudio() { if(bgm.paused) bgm.play().catch(e => console.log("Audio waiting for interaction")); }
     document.body.addEventListener('click', initAudio, { once: true });
     document.body.addEventListener('touchstart', initAudio, { once: true });
+    document.addEventListener("visibilitychange", function() { if (document.hidden) { bgm.pause(); } else { bgm.play().catch(e => console.log("Waiting")); } });
 
-    document.addEventListener("visibilitychange", function() {
-        if (document.hidden) { bgm.pause(); } else { bgm.play().catch(e => console.log("Waiting")); }
-    });
-
-    // --- MODAL FUNCTIONS ---
-    window.openModal = function(modalId) {
-        document.getElementById(modalId).classList.add('active');
-        document.body.classList.add('modal-open');
-    }
-    window.closeModal = function(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-        document.body.classList.remove('modal-open');
-    }
-    window.closeModalOutside = function(event, modalId) {
-        if (event.target.id === modalId) window.closeModal(modalId);
-    }
+    window.openModal = function(modalId) { document.getElementById(modalId).classList.add('active'); document.body.classList.add('modal-open'); }
+    window.closeModal = function(modalId) { document.getElementById(modalId).classList.remove('active'); document.body.classList.remove('modal-open'); }
+    window.closeModalOutside = function(event, modalId) { if (event.target.id === modalId) window.closeModal(modalId); }
 
     // --- ADMIN LOGIC ---
     let adminClickCount = 0;
     let adminClickTimer;
-    
     window.handleLogoClick = function() {
-        adminClickCount++;
-        clearTimeout(adminClickTimer);
-        adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 2000); 
-        
-        if(adminClickCount === 5) {
-            adminClickCount = 0;
-            window.openModal('adminLoginModal');
-        }
+        adminClickCount++; clearTimeout(adminClickTimer); adminClickTimer = setTimeout(() => { adminClickCount = 0; }, 2000); 
+        if(adminClickCount === 5) { adminClickCount = 0; window.openModal('adminLoginModal'); }
     }
-
     window.verifyAdmin = function() {
-        const u = document.getElementById('adminUser').value.trim();
-        const p = document.getElementById('adminPass').value.trim();
-        
-        // Convert input to Base64 to match stored secure string
-        const inputU = btoa(u);
-        const inputP = btoa(p);
-        
-        const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
-        const validP = window.siteConfig.adminAuth?.p || defaultAdminConfig.adminAuth.p;
-
+        const u = document.getElementById('adminUser').value.trim(); const p = document.getElementById('adminPass').value.trim();
+        const inputU = btoa(u); const inputP = btoa(p);
+        const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u; const validP = window.siteConfig.adminAuth?.p || defaultAdminConfig.adminAuth.p;
         if (inputU === validU && inputP === validP) {
-            document.getElementById('adminError').classList.remove('show');
-            window.closeModal('adminLoginModal');
-            
-            // Wipe inputs for security
-            document.getElementById('adminUser').value = '';
-            document.getElementById('adminPass').value = '';
-            
-            openAdminPanel();
-        } else {
-            document.getElementById('adminError').classList.add('show');
-        }
+            document.getElementById('adminError').classList.remove('show'); window.closeModal('adminLoginModal');
+            document.getElementById('adminUser').value = ''; document.getElementById('adminPass').value = ''; openAdminPanel();
+        } else { document.getElementById('adminError').classList.add('show'); }
     }
 
     function openAdminPanel() {
-        // Load Admin Security (decoded just for the placeholder hint)
         const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
-        document.getElementById('adminSetUser').placeholder = "Current: " + atob(validU);
-        document.getElementById('adminSetUser').value = "";
-        document.getElementById('adminSetPass').value = "";
-
-        // Load Gateway Config
+        document.getElementById('adminSetUser').placeholder = "Current: " + atob(validU); document.getElementById('adminSetUser').value = ""; document.getElementById('adminSetPass').value = "";
         document.getElementById('adminPaymentMode').value = window.siteConfig.paymentMode || 'upi';
         document.getElementById('adminRazorpayLink').value = window.siteConfig.razorpayLink || '';
         document.getElementById('adminRazorpayApi').value = window.siteConfig.razorpayApiUrl || '';
-
-        // Load Shop Timings
         document.getElementById('adminNightStart').value = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
         document.getElementById('adminNightEnd').value = window.siteConfig.shopTiming.endHour !== undefined ? window.siteConfig.shopTiming.endHour : 9;
-
-        // Advanced Texts
-        document.getElementById('adminTextTagline').value = getText('tagline');
-        document.getElementById('adminTextSecure').value = getText('secureBadge');
-        document.getElementById('adminTextInstant').value = getText('instantBadge');
-        document.getElementById('adminTextSupport').value = getText('supportBadge');
-        document.getElementById('adminTextOrders').value = getText('ordersToday');
-        
-        document.getElementById('adminTextStep1').value = getText('step1Title');
-        document.getElementById('adminTextStep2').value = getText('step2Title');
-        document.getElementById('adminTextStep3').value = getText('step3Title');
-        
-        document.getElementById('adminTextStep3Subnote').value = getText('step3Subnote');
-        document.getElementById('adminTextTotalPay').value = getText('totalPayable');
-        document.getElementById('adminTextWarnTitle').value = getText('warnTitle');
-        document.getElementById('adminTextWarnDesc').value = getText('warnDesc');
-        document.getElementById('adminTextAwaitTitle').value = getText('awaitingTitle');
-        document.getElementById('adminTextAwaitDesc1').value = getText('awaitingDesc1');
-        document.getElementById('adminTextAwaitDesc2').value = getText('awaitingDesc2');
-        document.getElementById('adminTextUpiBanner').value = getText('upiBanner');
-        document.getElementById('adminTextCancelBtn').value = getText('cancelBtn');
-        
-        document.getElementById('adminTextMaintenance').value = getText('maintenance');
-        document.getElementById('adminTextNightTitle').value = getText('nightModeTitle');
-        document.getElementById('adminTextNightDesc').value = getText('nightModeDesc');
-
-        // Success & Receipt Texts
-        document.getElementById('adminTextSuccessTitle').value = getText('successTitle');
-        document.getElementById('adminTextFinalMsg').value = getText('finalSuccessMsg');
-        document.getElementById('adminTextReceiptTitle').value = getText('receiptTitle');
-        document.getElementById('adminTextLblPack').value = getText('lblPack');
-        document.getElementById('adminTextLblAmount').value = getText('lblAmount');
-        document.getElementById('adminTextLblUid').value = getText('lblUid');
-        document.getElementById('adminTextLblIgn').value = getText('lblIgn');
-        document.getElementById('adminTextLblTime').value = getText('lblTime');
+        document.getElementById('adminTextTagline').value = getText('tagline'); document.getElementById('adminTextSecure').value = getText('secureBadge');
+        document.getElementById('adminTextInstant').value = getText('instantBadge'); document.getElementById('adminTextSupport').value = getText('supportBadge');
+        document.getElementById('adminTextOrders').value = getText('ordersToday'); document.getElementById('adminTextStep1').value = getText('step1Title');
+        document.getElementById('adminTextStep2').value = getText('step2Title'); document.getElementById('adminTextStep3').value = getText('step3Title');
+        document.getElementById('adminTextStep3Subnote').value = getText('step3Subnote'); document.getElementById('adminTextTotalPay').value = getText('totalPayable');
+        document.getElementById('adminTextWarnTitle').value = getText('warnTitle'); document.getElementById('adminTextWarnDesc').value = getText('warnDesc');
+        document.getElementById('adminTextAwaitTitle').value = getText('awaitingTitle'); document.getElementById('adminTextAwaitDesc1').value = getText('awaitingDesc1');
+        document.getElementById('adminTextAwaitDesc2').value = getText('awaitingDesc2'); document.getElementById('adminTextUpiBanner').value = getText('upiBanner');
+        document.getElementById('adminTextCancelBtn').value = getText('cancelBtn'); document.getElementById('adminTextMaintenance').value = getText('maintenance');
+        document.getElementById('adminTextNightTitle').value = getText('nightModeTitle'); document.getElementById('adminTextNightDesc').value = getText('nightModeDesc');
+        document.getElementById('adminTextSuccessTitle').value = getText('successTitle'); document.getElementById('adminTextFinalMsg').value = getText('finalSuccessMsg');
+        document.getElementById('adminTextReceiptTitle').value = getText('receiptTitle'); document.getElementById('adminTextLblPack').value = getText('lblPack');
+        document.getElementById('adminTextLblAmount').value = getText('lblAmount'); document.getElementById('adminTextLblUid').value = getText('lblUid');
+        document.getElementById('adminTextLblIgn').value = getText('lblIgn'); document.getElementById('adminTextLblTime').value = getText('lblTime');
         document.getElementById('adminTextBtnNew').value = getText('btnNewOrder');
 
-        // Text Toggles
-        document.getElementById('tgl_tagline').checked = getTgl('showTagline');
-        document.getElementById('tgl_secureBadge').checked = getTgl('showSecureBadge');
-        document.getElementById('tgl_instantBadge').checked = getTgl('showInstantBadge');
-        document.getElementById('tgl_supportBadge').checked = getTgl('showSupportBadge');
-        document.getElementById('tgl_ordersToday').checked = getTgl('showOrdersToday');
-        document.getElementById('tgl_step1Title').checked = getTgl('showStep1Title');
-        document.getElementById('tgl_step2Title').checked = getTgl('showStep2Title');
-        document.getElementById('tgl_step3Title').checked = getTgl('showStep3Title');
-        document.getElementById('tgl_step3Subnote').checked = getTgl('showStep3Subnote');
-        document.getElementById('tgl_totalPayable').checked = getTgl('showTotalPayable');
-        document.getElementById('tgl_warnBanner').checked = getTgl('showWarnBanner');
-        document.getElementById('tgl_awaitingStatus').checked = getTgl('showAwaitingStatus');
-        document.getElementById('tgl_upiBannerText').checked = getTgl('showUpiBannerText');
-        document.getElementById('tgl_cancelBtn').checked = getTgl('showCancelBtn');
-        
-        document.getElementById('tgl_successTitle').checked = getTgl('showSuccessTitle');
-        document.getElementById('tgl_showReceipt').checked = getTgl('showReceipt');
-
-        // Component Toggles
-        document.getElementById('tgl_enableNightMode').checked = getTgl('enableNightMode');
-        document.getElementById('adminShowLogo').checked = getTgl('showPartnerLogo');
-        document.getElementById('adminShowProof').checked = getTgl('showSocialProof');
-        document.getElementById('adminShowUpiIcons').checked = getTgl('showUpiApps');
+        document.getElementById('tgl_tagline').checked = getTgl('showTagline'); document.getElementById('tgl_secureBadge').checked = getTgl('showSecureBadge');
+        document.getElementById('tgl_instantBadge').checked = getTgl('showInstantBadge'); document.getElementById('tgl_supportBadge').checked = getTgl('showSupportBadge');
+        document.getElementById('tgl_ordersToday').checked = getTgl('showOrdersToday'); document.getElementById('tgl_step1Title').checked = getTgl('showStep1Title');
+        document.getElementById('tgl_step2Title').checked = getTgl('showStep2Title'); document.getElementById('tgl_step3Title').checked = getTgl('showStep3Title');
+        document.getElementById('tgl_step3Subnote').checked = getTgl('showStep3Subnote'); document.getElementById('tgl_totalPayable').checked = getTgl('showTotalPayable');
+        document.getElementById('tgl_warnBanner').checked = getTgl('showWarnBanner'); document.getElementById('tgl_awaitingStatus').checked = getTgl('showAwaitingStatus');
+        document.getElementById('tgl_upiBannerText').checked = getTgl('showUpiBannerText'); document.getElementById('tgl_cancelBtn').checked = getTgl('showCancelBtn');
+        document.getElementById('tgl_successTitle').checked = getTgl('showSuccessTitle'); document.getElementById('tgl_showReceipt').checked = getTgl('showReceipt');
+        document.getElementById('tgl_enableNightMode').checked = getTgl('enableNightMode'); document.getElementById('adminShowLogo').checked = getTgl('showPartnerLogo');
+        document.getElementById('adminShowProof').checked = getTgl('showSocialProof'); document.getElementById('adminShowUpiIcons').checked = getTgl('showUpiApps');
         document.getElementById('adminShowKrafton').checked = getTgl('showFooterKrafton');
 
-        // Policies Toggles
-        document.getElementById('adminShowTerms').checked = window.siteConfig.policies.showTerms;
-        document.getElementById('adminShowPrivacy').checked = window.siteConfig.policies.showPrivacy;
-        document.getElementById('adminShowRefund').checked = window.siteConfig.policies.showRefund;
-        document.getElementById('adminShowShipping').checked = window.siteConfig.policies.showShipping;
+        document.getElementById('adminShowTerms').checked = window.siteConfig.policies.showTerms; document.getElementById('adminShowPrivacy').checked = window.siteConfig.policies.showPrivacy;
+        document.getElementById('adminShowRefund').checked = window.siteConfig.policies.showRefund; document.getElementById('adminShowShipping').checked = window.siteConfig.policies.showShipping;
         document.getElementById('adminShowContact').checked = window.siteConfig.policies.showContact;
-
-        // Load Policies Content
         document.getElementById('adminContentTerms').value = window.siteConfig.policies.contentTerms || defaultAdminConfig.policies.contentTerms;
         document.getElementById('adminContentPrivacy').value = window.siteConfig.policies.contentPrivacy || defaultAdminConfig.policies.contentPrivacy;
         document.getElementById('adminContentRefund').value = window.siteConfig.policies.contentRefund || defaultAdminConfig.policies.contentRefund;
         document.getElementById('adminContentShipping').value = window.siteConfig.policies.contentShipping || defaultAdminConfig.policies.contentShipping;
         document.getElementById('adminContentContact').value = window.siteConfig.policies.contentContact || defaultAdminConfig.policies.contentContact;
         
-        window.renderAdminUpiList();
-        window.renderAdminPacksList();
-        window.openModal('adminPanelModal');
+        window.renderAdminUpiList(); window.renderAdminPacksList(); window.openModal('adminPanelModal');
     }
 
-    // UPI List rendering & handling
     window.renderAdminUpiList = function() {
         if(!document.getElementById('adminUpiList')) return;
         const upis = window.siteConfig.upiIds || [];
-        
         const renderList = upis.map((u, index) => `
             <div class="admin-input-group" style="justify-content: space-between; background: rgba(0, 224, 255, 0.05); border: 1px solid rgba(0, 224, 255, 0.1);">
                 <div style="display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden;">
@@ -1780,110 +1717,66 @@
             </div>
         `).join('');
         
-        if(upis.length === 0) {
-            document.getElementById('adminUpiList').innerHTML = `<div style="text-align:center; padding: 10px; color: var(--error); font-size: 12px; margin-bottom: 10px; border: 1px dashed var(--error); border-radius: var(--radius-sm);">No UPI IDs added. Maintenance mode is ON (If UPI is selected).</div>`;
-        } else {
-            document.getElementById('adminUpiList').innerHTML = renderList;
-        }
+        if(upis.length === 0) { document.getElementById('adminUpiList').innerHTML = `<div style="text-align:center; padding: 10px; color: var(--error); font-size: 12px; margin-bottom: 10px; border: 1px dashed var(--error); border-radius: var(--radius-sm);">No UPI IDs added. Maintenance mode is ON (If UPI is selected).</div>`;
+        } else { document.getElementById('adminUpiList').innerHTML = renderList; }
     }
 
-    window.toggleUpiActive = function(index) {
-        if(window.siteConfig.upiIds[index]) {
-            window.siteConfig.upiIds[index].active = !window.siteConfig.upiIds[index].active;
-            window.renderAdminUpiList();
-        }
-    }
-
-    window.removeUpi = function(index) {
-        window.siteConfig.upiIds.splice(index, 1);
-        window.renderAdminUpiList();
-    }
-
+    window.toggleUpiActive = function(index) { if(window.siteConfig.upiIds[index]) { window.siteConfig.upiIds[index].active = !window.siteConfig.upiIds[index].active; window.renderAdminUpiList(); } }
+    window.removeUpi = function(index) { window.siteConfig.upiIds.splice(index, 1); window.renderAdminUpiList(); }
     window.addNewUpi = function() {
-        const upiInput = document.getElementById('newUpiId');
-        const val = upiInput.value.trim();
-        if(val) {
-            if(!window.siteConfig.upiIds) window.siteConfig.upiIds = [];
-            window.siteConfig.upiIds.push({id: val, active: true});
-            upiInput.value = '';
-            window.renderAdminUpiList();
-        } else {
-            alert("Please enter a valid UPI ID");
-        }
+        const val = document.getElementById('newUpiId').value.trim();
+        if(val) { if(!window.siteConfig.upiIds) window.siteConfig.upiIds = []; window.siteConfig.upiIds.push({id: val, active: true}); document.getElementById('newUpiId').value = ''; window.renderAdminUpiList();
+        } else { alert("Please enter a valid UPI ID"); }
     }
 
     window.renderAdminPacksList = function() {
         if(!document.getElementById('adminTrialPacksList')) return;
-        
         const renderList = (packs, type) => packs.map((p, index) => `
-            <div class="admin-input-group">
-                <input type="number" class="form-input" value="${p.uc}" onchange="updatePack('${type}', ${index}, 'uc', this.value)" style="padding: 8px; font-size: 14px; width:40%;"> UC
-                <input type="number" class="form-input" value="${p.price}" onchange="updatePack('${type}', ${index}, 'price', this.value)" style="padding: 8px; font-size: 14px; width:40%;"> ₹
-                <button class="btn" style="background:var(--error); padding: 8px; width: 20%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); padding: 10px; margin-bottom: 10px; border-radius: 8px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+                    <input type="number" class="form-input" value="${p.uc}" onchange="updatePack('${type}', ${index}, 'uc', this.value)" style="padding: 8px; font-size: 13px; width:40%;" placeholder="UC"> 
+                    <input type="number" class="form-input" value="${p.price}" onchange="updatePack('${type}', ${index}, 'price', this.value)" style="padding: 8px; font-size: 13px; width:40%;" placeholder="₹">
+                    <button class="btn" style="background:var(--error); padding: 8px; width: 20%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
+                </div>
+                <input type="text" class="form-input" value="${p.rzpLink || ''}" onchange="updatePack('${type}', ${index}, 'rzpLink', this.value)" style="padding: 8px; font-size: 11px; width:100%;" placeholder="Paste specific fixed amount Razorpay.me link here">
             </div>
         `).join('');
-
         document.getElementById('adminTrialPacksList').innerHTML = renderList(window.siteConfig.trialPacks || [], 'trialPacks');
         document.getElementById('adminBulkPacksList').innerHTML = renderList(window.siteConfig.bulkPacks || [], 'bulkPacks');
     }
 
     window.updatePack = function(type, index, field, value) {
-        window.siteConfig[type][index][field] = parseInt(value) || 0;
+        if (field === 'rzpLink') { window.siteConfig[type][index][field] = value.trim(); } else { window.siteConfig[type][index][field] = parseInt(value) || 0; }
     }
-
-    window.removePack = function(type, index) {
-        window.siteConfig[type].splice(index, 1);
-        window.renderAdminPacksList();
-    }
-
+    window.removePack = function(type, index) { window.siteConfig[type].splice(index, 1); window.renderAdminPacksList(); }
     window.addNewPack = function() {
         const type = document.getElementById('newPackType').value === 'trial' ? 'trialPacks' : 'bulkPacks';
-        const uc = parseInt(document.getElementById('newPackUc').value);
-        const price = parseInt(document.getElementById('newPackPrice').value);
-        if(uc && price) {
-            window.siteConfig[type].push({uc, price});
-            document.getElementById('newPackUc').value = '';
-            document.getElementById('newPackPrice').value = '';
-            window.renderAdminPacksList();
-        } else {
-            alert("Please enter valid UC and Price");
-        }
+        const uc = parseInt(document.getElementById('newPackUc').value); const price = parseInt(document.getElementById('newPackPrice').value);
+        if(uc && price) { window.siteConfig[type].push({uc, price, rzpLink: ""}); document.getElementById('newPackUc').value = ''; document.getElementById('newPackPrice').value = ''; window.renderAdminPacksList();
+        } else { alert("Please enter valid UC and Price"); }
     }
 
-    // Save configuration to both LocalStorage and Live Database
     window.saveAdminSettings = async function() {
-        const btn = document.getElementById('adminSaveBtn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Live...';
-        btn.disabled = true;
+        const btn = document.getElementById('adminSaveBtn'); const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Live...'; btn.disabled = true;
 
-        // Collect Admin Security Updates (Save as Base64 Hash to hide from source code view)
-        const newU = document.getElementById('adminSetUser').value.trim();
-        const newP = document.getElementById('adminSetPass').value.trim();
-        if(newU && newP) {
-            window.siteConfig.adminAuth = { u: btoa(newU), p: btoa(newP) };
-        }
+        const newU = document.getElementById('adminSetUser').value.trim(); const newP = document.getElementById('adminSetPass').value.trim();
+        if(newU && newP) { window.siteConfig.adminAuth = { u: btoa(newU), p: btoa(newP) }; }
         
-        // Collect Payment Gateway Settings
         window.siteConfig.paymentMode = document.getElementById('adminPaymentMode').value;
         window.siteConfig.razorpayLink = document.getElementById('adminRazorpayLink').value.trim();
         window.siteConfig.razorpayApiUrl = document.getElementById('adminRazorpayApi').value.trim();
-
-        // Collect Shop Timings
         window.siteConfig.shopTiming.startHour = parseInt(document.getElementById('adminNightStart').value) || 0;
         window.siteConfig.shopTiming.endHour = parseInt(document.getElementById('adminNightEnd').value) || 9;
-
-        // Collect Advanced Texts
+        
         window.siteConfig.texts.tagline = document.getElementById('adminTextTagline').value.trim() || defaultAdminConfig.texts.tagline;
         window.siteConfig.texts.secureBadge = document.getElementById('adminTextSecure').value.trim() || defaultAdminConfig.texts.secureBadge;
         window.siteConfig.texts.instantBadge = document.getElementById('adminTextInstant').value.trim() || defaultAdminConfig.texts.instantBadge;
         window.siteConfig.texts.supportBadge = document.getElementById('adminTextSupport').value.trim() || defaultAdminConfig.texts.supportBadge;
         window.siteConfig.texts.ordersToday = document.getElementById('adminTextOrders').value.trim() || defaultAdminConfig.texts.ordersToday;
-        
         window.siteConfig.texts.step1Title = document.getElementById('adminTextStep1').value.trim() || defaultAdminConfig.texts.step1Title;
         window.siteConfig.texts.step2Title = document.getElementById('adminTextStep2').value.trim() || defaultAdminConfig.texts.step2Title;
         window.siteConfig.texts.step3Title = document.getElementById('adminTextStep3').value.trim() || defaultAdminConfig.texts.step3Title;
-        
         window.siteConfig.texts.step3Subnote = document.getElementById('adminTextStep3Subnote').value.trim() || defaultAdminConfig.texts.step3Subnote;
         window.siteConfig.texts.totalPayable = document.getElementById('adminTextTotalPay').value.trim() || defaultAdminConfig.texts.totalPayable;
         window.siteConfig.texts.warnTitle = document.getElementById('adminTextWarnTitle').value.trim() || defaultAdminConfig.texts.warnTitle;
@@ -1893,11 +1786,9 @@
         window.siteConfig.texts.awaitingDesc2 = document.getElementById('adminTextAwaitDesc2').value.trim() || defaultAdminConfig.texts.awaitingDesc2;
         window.siteConfig.texts.upiBanner = document.getElementById('adminTextUpiBanner').value.trim() || defaultAdminConfig.texts.upiBanner;
         window.siteConfig.texts.cancelBtn = document.getElementById('adminTextCancelBtn').value.trim() || defaultAdminConfig.texts.cancelBtn;
-        
         window.siteConfig.texts.maintenance = document.getElementById('adminTextMaintenance').value.trim() || defaultAdminConfig.texts.maintenance;
         window.siteConfig.texts.nightModeTitle = document.getElementById('adminTextNightTitle').value.trim() || defaultAdminConfig.texts.nightModeTitle;
         window.siteConfig.texts.nightModeDesc = document.getElementById('adminTextNightDesc').value.trim() || defaultAdminConfig.texts.nightModeDesc;
-
         window.siteConfig.texts.successTitle = document.getElementById('adminTextSuccessTitle').value.trim() || defaultAdminConfig.texts.successTitle;
         window.siteConfig.texts.finalSuccessMsg = document.getElementById('adminTextFinalMsg').value.trim() || defaultAdminConfig.texts.finalSuccessMsg;
         window.siteConfig.texts.receiptTitle = document.getElementById('adminTextReceiptTitle').value.trim() || defaultAdminConfig.texts.receiptTitle;
@@ -1908,7 +1799,6 @@
         window.siteConfig.texts.lblTime = document.getElementById('adminTextLblTime').value.trim() || defaultAdminConfig.texts.lblTime;
         window.siteConfig.texts.btnNewOrder = document.getElementById('adminTextBtnNew').value.trim() || defaultAdminConfig.texts.btnNewOrder;
 
-        // Collect Text Toggles
         window.siteConfig.toggles.showTagline = document.getElementById('tgl_tagline').checked;
         window.siteConfig.toggles.showSecureBadge = document.getElementById('tgl_secureBadge').checked;
         window.siteConfig.toggles.showInstantBadge = document.getElementById('tgl_instantBadge').checked;
@@ -1925,126 +1815,85 @@
         window.siteConfig.toggles.showCancelBtn = document.getElementById('tgl_cancelBtn').checked;
         window.siteConfig.toggles.showSuccessTitle = document.getElementById('tgl_successTitle').checked;
         window.siteConfig.toggles.showReceipt = document.getElementById('tgl_showReceipt').checked;
-
-        // Collect Component Toggles
         window.siteConfig.toggles.enableNightMode = document.getElementById('tgl_enableNightMode').checked;
         window.siteConfig.toggles.showPartnerLogo = document.getElementById('adminShowLogo').checked;
         window.siteConfig.toggles.showSocialProof = document.getElementById('adminShowProof').checked;
         window.siteConfig.toggles.showUpiApps = document.getElementById('adminShowUpiIcons').checked;
         window.siteConfig.toggles.showFooterKrafton = document.getElementById('adminShowKrafton').checked;
         
-        // Collect Policies Toggles
         window.siteConfig.policies.showTerms = document.getElementById('adminShowTerms').checked;
         window.siteConfig.policies.showPrivacy = document.getElementById('adminShowPrivacy').checked;
         window.siteConfig.policies.showRefund = document.getElementById('adminShowRefund').checked;
         window.siteConfig.policies.showShipping = document.getElementById('adminShowShipping').checked;
         window.siteConfig.policies.showContact = document.getElementById('adminShowContact').checked;
-
-        // Collect Policies Texts
         window.siteConfig.policies.contentTerms = document.getElementById('adminContentTerms').value.trim() || defaultAdminConfig.policies.contentTerms;
         window.siteConfig.policies.contentPrivacy = document.getElementById('adminContentPrivacy').value.trim() || defaultAdminConfig.policies.contentPrivacy;
         window.siteConfig.policies.contentRefund = document.getElementById('adminContentRefund').value.trim() || defaultAdminConfig.policies.contentRefund;
         window.siteConfig.policies.contentShipping = document.getElementById('adminContentShipping').value.trim() || defaultAdminConfig.policies.contentShipping;
         window.siteConfig.policies.contentContact = document.getElementById('adminContentContact').value.trim() || defaultAdminConfig.policies.contentContact;
 
-        // Save to local as fallback backup
         localStorage.setItem('ucifyAdminConfig', JSON.stringify(window.siteConfig));
 
-        // Attempt to save to Firebase Live Database
         if(window.saveConfigToDB) {
             const success = await window.saveConfigToDB(window.siteConfig);
-            if(success) {
-                btn.innerHTML = 'Saved to Database! <i class="fas fa-check"></i>';
-                btn.style.background = 'var(--success)';
-                btn.style.color = '#000';
-            } else {
-                btn.innerHTML = 'Saved Locally Only';
-                alert("Database save failed. Check console or make sure Firebase is configured.");
-            }
-        } else {
-            btn.innerHTML = 'Saved Locally';
-        }
+            if(success) { btn.innerHTML = 'Saved to Database! <i class="fas fa-check"></i>'; btn.style.background = 'var(--success)'; btn.style.color = '#000';
+            } else { btn.innerHTML = 'Saved Locally Only'; alert("Database save failed. Check console or make sure Firebase is configured."); }
+        } else { btn.innerHTML = 'Saved Locally'; }
 
         setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.background = 'var(--primary)';
-            btn.style.color = '#000';
-            btn.disabled = false;
-            window.closeModal('adminPanelModal');
-            window.applyUISettings(); // apply UI instantly
-            window.injectDynamicStatusUI();
-            
-            // Re-check warning display logic since toggle might have changed
+            btn.innerHTML = originalText; btn.style.background = 'var(--primary)'; btn.style.color = '#000'; btn.disabled = false;
+            window.closeModal('adminPanelModal'); window.applyUISettings(); window.injectDynamicStatusUI();
             if (document.getElementById('step3').classList.contains('active')) {
                 document.getElementById('highValueWarning').style.display = getTgl('showWarnBanner') ? (parseInt(selectedPack?.price || 0) > 2000 ? 'block' : 'none') : 'none';
             }
         }, 1500);
     }
 
-    // Dynamic Pack Rendering on Site
     window.renderSitePacks = function() {
-        const trialGrid = document.getElementById('trialPacksGrid');
-        const bulkGrid = document.getElementById('bulkPacksGrid');
-        
+        const trialGrid = document.getElementById('trialPacksGrid'); const bulkGrid = document.getElementById('bulkPacksGrid');
         if(!trialGrid || !bulkGrid) return;
-
-        trialGrid.innerHTML = '';
-        bulkGrid.innerHTML = '';
-
+        trialGrid.innerHTML = ''; bulkGrid.innerHTML = '';
         if(window.siteConfig.trialPacks) {
             window.siteConfig.trialPacks.forEach(pack => {
                 trialGrid.innerHTML += `
-                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplink="${pack.rzpLink || ''}">
                     <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
                     <div class="pack-price">₹${pack.price}</div>
                   </div>`;
             });
         }
-
         if(window.siteConfig.bulkPacks) {
             window.siteConfig.bulkPacks.forEach(pack => {
                 bulkGrid.innerHTML += `
-                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}">
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplink="${pack.rzpLink || ''}">
                     <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
                     <div class="pack-price">₹${pack.price}</div>
                   </div>`;
             });
         }
-        
         attachPackListeners();
     }
 
     function attachPackListeners() {
         document.querySelectorAll('.pack-card').forEach(card => {
             card.addEventListener('click', function(){
-                if(this.classList.contains('purchased')) return;
-                triggerHaptic('light');
-                document.querySelectorAll('.pack-card').forEach(c => {
-                  c.classList.remove('selected');
-                  c.querySelector('.check-mark')?.remove();
-                });
+                if(this.classList.contains('purchased')) return; triggerHaptic('light');
+                document.querySelectorAll('.pack-card').forEach(c => { c.classList.remove('selected'); c.querySelector('.check-mark')?.remove(); });
                 this.classList.add('selected');
-                const checkMark = document.createElement('div');
-                checkMark.className = 'check-mark';
-                checkMark.innerHTML = '<i class="fa-solid fa-check"></i>';
+                const checkMark = document.createElement('div'); checkMark.className = 'check-mark'; checkMark.innerHTML = '<i class="fa-solid fa-check"></i>';
                 this.appendChild(checkMark);
-                selectedPack = { uc: this.dataset.uc, price: this.dataset.price };
+                selectedPack = { uc: this.dataset.uc, price: this.dataset.price, rzpLink: this.dataset.rzplink };
                 document.getElementById('next2').disabled = false;
             });
         });
     }
 
-    // --- EFFECTS ---
     function initParticles(){
       const container = document.getElementById('floatingParticles');
       for(let i = 0; i < 15; i++){
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.innerHTML = '✦';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.top = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 5 + 's';
-        particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+        const particle = document.createElement('div'); particle.className = 'particle'; particle.innerHTML = '✦';
+        particle.style.left = Math.random() * 100 + '%'; particle.style.top = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 5 + 's'; particle.style.animationDuration = (10 + Math.random() * 10) + 's';
         container.appendChild(particle);
       }
     }
@@ -2053,301 +1902,215 @@
       const colors = ['#FFB800', '#00E0FF', '#ffffff'];
       for(let i = 0; i < 50; i++){
         setTimeout(() => {
-          const confetti = document.createElement('div');
-          confetti.className = 'confetti';
-          confetti.style.left = Math.random() * 100 + '%';
-          confetti.style.top = '-10px';
-          confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-          
-          confetti.animate([
-            { transform: `translate(0,0) rotate(0deg)`, opacity: 1 },
-            { transform: `translate(${Math.random()*100 - 50}px, 100vh) rotate(720deg)`, opacity: 0 }
-          ], {
-            duration: 2000 + Math.random() * 2000,
-            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-          });
-          
-          document.body.appendChild(confetti);
-          setTimeout(() => confetti.remove(), 4000);
+          const confetti = document.createElement('div'); confetti.className = 'confetti';
+          confetti.style.left = Math.random() * 100 + '%'; confetti.style.top = '-10px'; confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+          confetti.animate([ { transform: `translate(0,0) rotate(0deg)`, opacity: 1 }, { transform: `translate(${Math.random()*100 - 50}px, 100vh) rotate(720deg)`, opacity: 0 }
+          ], { duration: 2000 + Math.random() * 2000, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' });
+          document.body.appendChild(confetti); setTimeout(() => confetti.remove(), 4000);
         }, i * 30);
       }
     }
 
-    // Fallback if Firebase takes too long or fails
     document.addEventListener('DOMContentLoaded', () => {
-      initParticles();
-      window.applyUISettings(); 
-      window.renderSitePacks(); 
-      document.getElementById('next1').disabled = true;
-      
-      // If Firebase hasn't successfully hidden the loader after 2.5 seconds, hide it anyway
+      initParticles(); window.applyUISettings(); window.renderSitePacks(); document.getElementById('next1').disabled = true;
       setTimeout(hideInitialLoader, 2500);
     });
 
     const gamingNames = [ "亗『MÂFÎÂ亗", "TOXIC彡KD", "77・playzYT", "SK๛play๛Live", "千ムＩＲＹＹ", "IQōShāDøwW", "LÙÇÍFËR〆", "Mâhïmâ", "DEMØN丨DEEPAK", "亗CZxAnurag亗", "FRSTxZGOD", "FGxWONGPLAYzzz", "GÕD〤RÚSHÈR", "IGメABHAY", "MR々ŁEGENÐ", "VÌNNÍ乂PLAYZ", "KGF๛OP亗×", "ROYALツKUNAL20", "『RÁGNÁR』", "GLXY丨DANGER", "SHADOW๛RIVEN", "會DAKU父", "LEGEND丶OPP", "SAʀDAʀJi", "HAWK么HARSH", "ZMCxSHREY", "K4气KALAAKAR", "『AIMGOD』1", "T乛Rex乛RAVAN", "Ē・ＶＥＮＯＭ", "๛『Vëgêtå", "4A乛M丨SNOW", "٭ɞALPHAʚ٭", "im๛PANDA", "SGLxShivam", "乛GameīxīOM", "・Ｄ卄マＵＶ・", "『EPC』KRXSNA", "ＦｒＯｚｅＮ", "๛Ðʀʌɢo", "ＹＡＳＨīě", "ＳＨＵ及Ｈ", "XT个『Farhan』", "D£ATH๛SLAYER", "『LAKSHYÀ』", "中ツWARRIORYT", "Vns๛Rahul", "EQZxJOKERyt", "ReFLeXツVENOM", "冬ＧＡＢＢＡＲ" ];
-
-    function getSocialUcPacks() {
-        const tPacks = window.siteConfig.trialPacks || [];
-        const bPacks = window.siteConfig.bulkPacks || [];
-        return [...tPacks, ...bPacks].map(p => p.uc + " UC");
-    }
-
+    function getSocialUcPacks() { const tPacks = window.siteConfig.trialPacks || []; const bPacks = window.siteConfig.bulkPacks || []; return [...tPacks, ...bPacks].map(p => p.uc + " UC"); }
     function showSocialProof(){
-      if(!allowSocialProofPopup) return; 
-      const ucPacksList = getSocialUcPacks();
-      if(ucPacksList.length === 0) return;
-      const randomName = gamingNames[Math.floor(Math.random() * gamingNames.length)];
-      const randomUC = ucPacksList[Math.floor(Math.random() * ucPacksList.length)];
-      const el = document.getElementById('socialProof');
-      document.getElementById('socialAvatar').textContent = randomName[0];
-      document.getElementById('socialName').textContent = randomName;
-      document.getElementById('socialUC').textContent = randomUC;
-      el.style.display = 'flex';
-      setTimeout(() => { el.style.display = 'none'; }, 5000);
+      if(!allowSocialProofPopup) return; const ucPacksList = getSocialUcPacks(); if(ucPacksList.length === 0) return;
+      const randomName = gamingNames[Math.floor(Math.random() * gamingNames.length)]; const randomUC = ucPacksList[Math.floor(Math.random() * ucPacksList.length)];
+      const el = document.getElementById('socialProof'); document.getElementById('socialAvatar').textContent = randomName[0];
+      document.getElementById('socialName').textContent = randomName; document.getElementById('socialUC').textContent = randomUC;
+      el.style.display = 'flex'; setTimeout(() => { el.style.display = 'none'; }, 5000);
     }
     setInterval(() => { if(Math.random() > 0.5) showSocialProof(); }, 10000);
 
-    function getIndiaHour(){
-      const date = new Date();
-      const hourStr = date.toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour: "numeric", hour12: false});
-      return parseInt(hourStr);
-    }
-
+    function getIndiaHour(){ const date = new Date(); const hourStr = date.toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour: "numeric", hour12: false}); return parseInt(hourStr); }
     function animateLiveOrders(){
-      const el = document.getElementById('liveOrders');
-      let currentOrders = 1000 + Math.floor(Math.random() * 2001);
-      el.textContent = currentOrders;
-      function updateCounter() {
-          currentOrders += 1;
-          el.textContent = currentOrders;
-          let nextInterval = 15000 + Math.floor(Math.random() * 5001);
-          setTimeout(updateCounter, nextInterval);
-      }
+      const el = document.getElementById('liveOrders'); let currentOrders = 1000 + Math.floor(Math.random() * 2001); el.textContent = currentOrders;
+      function updateCounter() { currentOrders += 1; el.textContent = currentOrders; let nextInterval = 15000 + Math.floor(Math.random() * 5001); setTimeout(updateCounter, nextInterval); }
       setTimeout(updateCounter, 15000);
     }
     animateLiveOrders();
 
     function startQRTimer(){
-      const display = document.getElementById('timerDisplay');
-      const timerEl = document.getElementById('qrTimer');
-      timerEl.style.display = 'block'; 
-       
-      if(qrTimer) clearInterval(qrTimer);
-      timerSeconds = 900;
+      const display = document.getElementById('timerDisplay'); const timerEl = document.getElementById('qrTimer'); timerEl.style.display = 'block'; 
+      if(qrTimer) clearInterval(qrTimer); timerSeconds = 900;
       qrTimer = setInterval(() => {
-        timerSeconds--;
-        const mins = Math.floor(timerSeconds / 60);
-        const secs = timerSeconds % 60;
+        timerSeconds--; const mins = Math.floor(timerSeconds / 60); const secs = timerSeconds % 60;
         display.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-         
-        if(timerSeconds <= 0){
-          clearInterval(qrTimer);
-          display.textContent = 'Expired';
-          if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-        }
+        if(timerSeconds <= 0){ clearInterval(qrTimer); display.textContent = 'Expired'; if(paymentVerificationInterval) clearInterval(paymentVerificationInterval); }
       }, 1000);
     }
 
     function showToast(message){
-      const toast = document.getElementById('toast');
-      document.getElementById('toastText').textContent = message;
-      toast.classList.add('show');
+      const toast = document.getElementById('toast'); document.getElementById('toastText').textContent = message; toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2000);
     }
 
     window.copyOrderId = function(){
       const orderIdEl = document.getElementById('orderIdText');
-      navigator.clipboard.writeText(orderIdEl.textContent).then(() => {
-        showToast('Order ID copied!');
-        triggerHaptic('success');
-      });
+      navigator.clipboard.writeText(orderIdEl.textContent).then(() => { showToast('Order ID copied!'); triggerHaptic('success'); });
     }
 
-    function triggerHaptic(type='light'){
-      if(!navigator.vibrate) return;
-      const patterns = { light:[10], medium:[20], heavy:[30], success:[10,20,10] };
-      navigator.vibrate(patterns[type] || [10]);
-    }
-
-    function generateOrderId(){
-      return `UCF-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random()*900)}`;
-    }
+    function triggerHaptic(type='light'){ if(!navigator.vibrate) return; const patterns = { light:[10], medium:[20], heavy:[30], success:[10,20,10] }; navigator.vibrate(patterns[type] || [10]); }
+    function generateOrderId(){ return `UCF-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random()*900)}`; }
 
     function showStep(step){
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-      document.getElementById(`step${step}`).classList.add('active');
-      currentStep = step;
-      updateProgress();
+      document.getElementById(`step${step}`).classList.add('active'); currentStep = step; updateProgress();
     }
 
     function updateProgress(){
       const steps = document.querySelectorAll('.progress-step');
-      steps.forEach((stepEl, idx) => {
-        stepEl.classList.toggle('completed', idx < currentStep - 1);
-        stepEl.classList.toggle('active', idx === currentStep - 1);
-      });
+      steps.forEach((stepEl, idx) => { stepEl.classList.toggle('completed', idx < currentStep - 1); stepEl.classList.toggle('active', idx === currentStep - 1); });
     }
 
-    const uidInput = document.getElementById('uid');
-    const ignInput = document.getElementById('ign');
-    const uidIcon = document.getElementById('uidIcon');
-    const ignIcon = document.getElementById('ignIcon');
-    const uidError = document.getElementById('uidError');
+    const uidInput = document.getElementById('uid'); const ignInput = document.getElementById('ign'); const uidIcon = document.getElementById('uidIcon');
+    const ignIcon = document.getElementById('ignIcon'); const uidError = document.getElementById('uidError');
 
     function checkStep1Validation() {
-        const uidVal = uidInput.value.replace(/\D/g, '');
-        const ignVal = ignInput.value.trim();
-        const isUidValid = uidVal.length >= 9 && uidVal.length <= 12;
-        const isIgnValid = ignVal.length >= 2;
+        const uidVal = uidInput.value.replace(/\D/g, ''); const ignVal = ignInput.value.trim();
+        const isUidValid = uidVal.length >= 9 && uidVal.length <= 12; const isIgnValid = ignVal.length >= 2;
         document.getElementById('next1').disabled = !(isUidValid && isIgnValid);
     }
 
     uidInput.addEventListener('input', function(){
-      this.value = this.value.replace(/\D/g, '').slice(0,12);
-      const len = this.value.length;
-      const isValid = len >= 9 && len <= 12;
-      if(isValid){
-          uidInput.style.borderColor = "var(--success)";
-          uidIcon.className = 'input-icon check fas fa-check-circle';
-          uidError.classList.remove('show');
-          triggerHaptic('light');
-      } else {
-          uidInput.style.borderColor = "";
-          uidIcon.className = '';
-      }
-      checkStep1Validation();
+      this.value = this.value.replace(/\D/g, '').slice(0,12); const len = this.value.length; const isValid = len >= 9 && len <= 12;
+      if(isValid){ uidInput.style.borderColor = "var(--success)"; uidIcon.className = 'input-icon check fas fa-check-circle'; uidError.classList.remove('show'); triggerHaptic('light');
+      } else { uidInput.style.borderColor = ""; uidIcon.className = ''; } checkStep1Validation();
     });
 
     ignInput.addEventListener('input', function(){
         const isValid = this.value.trim().length >= 2;
-        if(isValid){
-          ignInput.style.borderColor = "var(--success)";
-          ignIcon.className = 'input-icon check fas fa-check-circle';
-          triggerHaptic('light');
-        } else {
-          ignInput.style.borderColor = "";
-          ignIcon.className = '';
-        }
-        checkStep1Validation();
+        if(isValid){ ignInput.style.borderColor = "var(--success)"; ignIcon.className = 'input-icon check fas fa-check-circle'; triggerHaptic('light');
+        } else { ignInput.style.borderColor = ""; ignIcon.className = ''; } checkStep1Validation();
     });
 
-    // ==========================================
-    // UPDATED FETCH LOGIC WITH HARDCODED URLS
-    // ==========================================
-    
-    // HARDCODED API URLS
     const HARDCODED_SHEET_URL = "https://script.google.com/macros/s/AKfycbxZmmaWlqrx9ydYVfO3XkZKh25Oxa_k0XiLNBPbEVEBOwZTlE2qPxF6OEoU-I9oJzLj/exec";
     const HARDCODED_VERIFY_URL = "https://script.google.com/macros/s/AKfycbzX371w86D2MFAGkpbbpYEm5GIvuXeh9BextRnqSLfzBLENLAaIU07T0Cr0nTPNJutQxg/exec";
     const HARDCODED_WEBHOOK_URL = "https://discord.com/api/webhooks/1516406944481542185/7zyh3P5Mj1tYUDmLQfFGEfTD2KLhE-t6hK4pJA6Kk_TxpbsEPi8QiJaWrcJFmMhWsgki";
 
     async function fetchPurchasedPacks(uid) {
-        try {
-            const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`);
-            const data = await response.json();
-            return data.purchased || [];
-        } catch (e) { 
-            console.error("UID Check Error:", e);
-            return []; 
-        }
+        try { const response = await fetch(`${HARDCODED_SHEET_URL}?uid=${uid}&t=${Date.now()}`); const data = await response.json(); return data.purchased || [];
+        } catch (e) { console.error("UID Check Error:", e); return []; }
     }
 
     document.getElementById('next1').onclick = async () => {
-        const btn = document.getElementById('next1');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-        btn.disabled = true;
+        const btn = document.getElementById('next1'); const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; btn.disabled = true;
 
-        currentUid = uidInput.value;
-        currentIgn = ignInput.value;
-        document.getElementById('displayUid').textContent = currentUid;
-        document.getElementById('displayIgn').textContent = currentIgn;
+        currentUid = uidInput.value; currentIgn = ignInput.value;
+        document.getElementById('displayUid').textContent = currentUid; document.getElementById('displayIgn').textContent = currentIgn;
 
         const purchasedPacks = await fetchPurchasedPacks(currentUid);
-          
         document.querySelectorAll('.pack-card').forEach(card => {
-            card.classList.remove('purchased', 'selected');
-            card.querySelector('.check-mark')?.remove();
-            if(purchasedPacks.includes(card.dataset.uc)){
-                card.classList.add('purchased');
-            }
+            card.classList.remove('purchased', 'selected'); card.querySelector('.check-mark')?.remove();
+            if(purchasedPacks.includes(card.dataset.uc)){ card.classList.add('purchased'); }
         });
 
-        const trialTitle = document.getElementById('trialPackTitle');
-        const trialGrid = document.getElementById('trialPacksGrid');
-        
-        let trialPackVisible = false;
-        document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => {
-           if(!card.classList.contains('purchased')) trialPackVisible = true;
-        });
-
+        const trialTitle = document.getElementById('trialPackTitle'); const trialGrid = document.getElementById('trialPacksGrid');
+        let trialPackVisible = false; document.querySelectorAll('#trialPacksGrid .pack-card').forEach(card => { if(!card.classList.contains('purchased')) trialPackVisible = true; });
         const tPacksCount = window.siteConfig.trialPacks ? window.siteConfig.trialPacks.length : 0;
         
-        if (!trialPackVisible && tPacksCount > 0) {
-            if(trialTitle) trialTitle.style.display = 'none';
-            if(trialGrid) trialGrid.style.display = 'none';
-        } else {
-            if(trialTitle) trialTitle.style.display = 'block';
-            if(trialGrid) trialGrid.style.display = 'grid'; 
-        }
+        if (!trialPackVisible && tPacksCount > 0) { if(trialTitle) trialTitle.style.display = 'none'; if(trialGrid) trialGrid.style.display = 'none';
+        } else { if(trialTitle) trialTitle.style.display = 'block'; if(trialGrid) trialGrid.style.display = 'grid'; }
 
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        showStep(2);
+        btn.innerHTML = originalText; btn.disabled = false; showStep(2);
     };
 
     document.getElementById('backToDetails').onclick = () => showStep(1);
 
-    // --- SMART PAYMENT PROCESSING (Supports both UPI and Razorpay) ---
-    document.getElementById('next2').onclick = function() {
-      const mode = window.siteConfig.paymentMode || 'upi';
+    // --- LOCK WAIT UI LOGIC ---
+    window.cancelLockWait = function() {
+        if(lockWaitTimer) clearInterval(lockWaitTimer);
+        document.getElementById('lockUI').style.display = 'none';
+        showStep(2);
+    }
+    
+    window.checkLockAgain = function() {
+        if(lockWaitTimer) clearInterval(lockWaitTimer);
+        document.getElementById('lockUI').style.display = 'none';
+        document.getElementById('next2').click();
+    }
 
-      // Validation for gateways
+    function showLockUI() {
+        document.getElementById('normalPaymentUI').style.display = 'none';
+        document.getElementById('maintenanceUI').style.display = 'none';
+        document.getElementById('dispCancelBtnWrap').style.display = 'none';
+        document.getElementById('lockUI').style.display = 'block';
+        
+        showStep(3);
+        
+        let waitTime = 120; // 2 minutes
+        const display = document.getElementById('lockUITimer');
+        if(lockWaitTimer) clearInterval(lockWaitTimer);
+        
+        lockWaitTimer = setInterval(() => {
+            waitTime--;
+            const mins = Math.floor(waitTime / 60); const secs = waitTime % 60;
+            display.textContent = `Retry in ${mins}:${secs.toString().padStart(2, '0')}`;
+            if(waitTime <= 0) { clearInterval(lockWaitTimer); display.textContent = "Ready to retry!"; }
+        }, 1000);
+    }
+
+    // --- SMART PAYMENT PROCESSING ---
+    document.getElementById('next2').onclick = async function() {
+      const mode = window.siteConfig.paymentMode || 'upi';
+      const btn = document.getElementById('next2');
+      const origText = btn.innerHTML;
+
       if (mode === 'upi') {
           let activeUpis = window.siteConfig.upiIds ? window.siteConfig.upiIds.filter(u => u.active) : [];
           if (activeUpis.length === 0) {
-              document.getElementById('normalPaymentUI').style.display = 'none';
-              document.getElementById('maintenanceUI').style.display = 'block';
-              showStep(3);
-              return; 
+              document.getElementById('normalPaymentUI').style.display = 'none'; document.getElementById('maintenanceUI').style.display = 'block'; showStep(3); return; 
           }
+      } 
+      
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+      btn.disabled = true;
+
+      let exactPrice = parseFloat(selectedPack.price);
+      let rzpTargetLink = window.siteConfig.razorpayLink || "";
+
+      if (mode === 'upi') {
+          const randomDecimal = (Math.floor(Math.random() * 99) + 1) / 100; exactPrice += randomDecimal;
       } else if (mode === 'razorpay') {
-          if (!window.siteConfig.razorpayLink || !window.siteConfig.razorpayApiUrl) {
-              document.getElementById('normalPaymentUI').style.display = 'none';
-              document.getElementById('maintenanceUI').style.display = 'block';
-              showStep(3);
-              return; 
-          }
+          if (selectedPack.rzpLink && selectedPack.rzpLink.trim() !== '') { rzpTargetLink = selectedPack.rzpLink.trim(); }
       }
-
-      document.getElementById('normalPaymentUI').style.display = 'block';
-      document.getElementById('maintenanceUI').style.display = 'none';
-
-      // Generate Exact Decimal
-      const randomDecimal = (Math.floor(Math.random() * 99) + 1) / 100;
-      const exactPrice = parseFloat(selectedPack.price) + randomDecimal;
+      
       exactPriceStr = exactPrice.toFixed(2); 
-      
-      const amountEl = document.getElementById('paymentAmount');
-      amountEl.textContent = '₹' + exactPriceStr;
-      
-      window.injectDynamicStatusUI(); 
       orderId = generateOrderId();
       
-      const warningEl = document.getElementById('highValueWarning');
-      if (parseInt(selectedPack.price) > 2000) {
-          warningEl.style.display = getTgl('showWarnBanner') ? 'block' : 'none';
-      } else {
-          warningEl.style.display = 'none';
+      // FIREBASE SMART LOCKING FOR RAZORPAY
+      if (mode === 'razorpay') {
+          if(typeof window.acquireLock === 'function') {
+              const lockAcquired = await window.acquireLock(exactPriceStr, orderId);
+              if(!lockAcquired) {
+                  btn.innerHTML = origText; btn.disabled = false;
+                  showLockUI(); return; // Stop process here
+              }
+          }
       }
+      
+      document.getElementById('normalPaymentUI').style.display = 'block';
+      document.getElementById('maintenanceUI').style.display = 'none';
+      document.getElementById('dispCancelBtnWrap').style.display = getTgl('showCancelBtn') ? 'flex' : 'none';
+      document.getElementById('lockUI').style.display = 'none';
+      
+      const amountEl = document.getElementById('paymentAmount'); amountEl.textContent = '₹' + exactPriceStr;
+      window.injectDynamicStatusUI(); 
+      
+      const warningEl = document.getElementById('highValueWarning');
+      if (parseInt(selectedPack.price) > 2000) { warningEl.style.display = getTgl('showWarnBanner') ? 'block' : 'none';
+      } else { warningEl.style.display = 'none'; }
         
       if (mode === 'upi') {
-          document.getElementById('razorpayCard').style.display = 'none';
-          document.getElementById('upiCard').style.display = 'block';
-          
-          const qrImage = document.getElementById('staticQrImage');
-          const loader = document.getElementById('qrLoader');
-          qrImage.style.display = 'none';
-          loader.style.display = 'block';
+          document.getElementById('razorpayCard').style.display = 'none'; document.getElementById('upiCard').style.display = 'block';
+          const qrImage = document.getElementById('staticQrImage'); const loader = document.getElementById('qrLoader');
+          qrImage.style.display = 'none'; loader.style.display = 'block';
 
           let activeUpis = window.siteConfig.upiIds.filter(u => u.active);
           const randomUpi = activeUpis[Math.floor(Math.random() * activeUpis.length)].id;
@@ -2355,63 +2118,40 @@
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}&margin=10`;
           
           qrImage.src = qrUrl;
-
-          qrImage.onload = function(){
-              loader.style.display = 'none';
-              qrImage.style.display = 'block';
-              startQRTimer();
-              startPaymentVerification(exactPriceStr, 'upi');
-          };
-
-          qrImage.onerror = function(){
-              loader.style.display = 'none';
-              console.log("Error loading QR code.");
-          };
+          qrImage.onload = function(){ loader.style.display = 'none'; qrImage.style.display = 'block'; startQRTimer(); startPaymentVerification(exactPriceStr, 'upi'); };
+          qrImage.onerror = function(){ loader.style.display = 'none'; console.log("Error loading QR code."); };
       } 
       else if (mode === 'razorpay') {
-          // RAZORPAY MODE LOGIC
-          document.getElementById('upiCard').style.display = 'none';
-          document.getElementById('razorpayCard').style.display = 'block';
-          
+          document.getElementById('upiCard').style.display = 'none'; document.getElementById('razorpayCard').style.display = 'block';
           document.getElementById('rzpExactAmountText').textContent = exactPriceStr;
           
           document.getElementById('rzpRedirectBtn').onclick = function() {
-              // Modifying the link to auto-fill the amount for razorpay.me URLs
-              let baseLink = window.siteConfig.razorpayLink.trim();
-              let redirectLink = baseLink;
-              
-              if (baseLink) {
-                  // Check if there are already parameters, and append the exact amount
-                  const separator = baseLink.includes('?') ? '&' : '?';
-                  redirectLink = `${baseLink}${separator}amount=${exactPriceStr}`;
-              }
-              
-              // Opens Razorpay payment page in a new tab AND TRACKS IT in razorpayWindow variable
-              razorpayWindow = window.open(redirectLink, '_blank');
+              if (!rzpTargetLink) { alert("Error: Admin has not configured a Razorpay link for this pack or globally."); return; }
+              razorpayWindow = window.open(rzpTargetLink, '_blank');
           };
           
-          // Poll the Razorpay Google Script
           startPaymentVerification(exactPriceStr, 'razorpay');
       }
 
+      btn.innerHTML = origText; btn.disabled = false;
       showStep(3);
     };
 
     document.getElementById('back3').onclick = () => {
       if(qrTimer) clearInterval(qrTimer);
       if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-      window.injectDynamicStatusUI(); 
-      showStep(2);
+      
+      // Release lock if going back from Razorpay
+      const mode = window.siteConfig.paymentMode || 'upi';
+      if(mode === 'razorpay' && typeof window.releaseLock === 'function') { window.releaseLock(exactPriceStr); }
+      
+      window.injectDynamicStatusUI(); showStep(2);
     };
 
     function startPaymentVerification(amountToCheck, mode = 'upi') {
         if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
-        
-        let verificationApiUrl = HARDCODED_VERIFY_URL; // Default UPI
-        
-        if (mode === 'razorpay') {
-            verificationApiUrl = window.siteConfig.razorpayApiUrl; // New Razorpay script
-        }
+        let verificationApiUrl = HARDCODED_VERIFY_URL; 
+        if (mode === 'razorpay') { verificationApiUrl = window.siteConfig.razorpayApiUrl; }
         
         paymentVerificationInterval = setInterval(async () => {
             try {
@@ -2421,38 +2161,29 @@
                 if(data.verified) {
                     clearInterval(paymentVerificationInterval);
                     if(qrTimer) clearInterval(qrTimer);
+                    if (razorpayWindow && !razorpayWindow.closed) { razorpayWindow.close(); }
                     
-                    // ==========================================
-                    // MAGIC TO AUTO-CLOSE RAZORPAY TAB
-                    // ==========================================
-                    if (razorpayWindow && !razorpayWindow.closed) {
-                        razorpayWindow.close();
-                    }
-                    // ==========================================
+                    // Release lock on success
+                    if(mode === 'razorpay' && typeof window.releaseLock === 'function') { window.releaseLock(exactPriceStr); }
                     
                     processSuccessfulPayment(mode);
                 }
-            } catch (err) {
-                console.log("Polling payment status...");
-            }
+            } catch (err) { console.log("Polling payment status..."); }
         }, 5000); 
     }
 
     async function processSuccessfulPayment(mode) {
         const vStatus = document.getElementById('verificationStatus');
-        vStatus.style.background = "rgba(0, 255, 157, 0.1)";
-        vStatus.style.borderColor = "var(--success)";
+        vStatus.style.background = "rgba(0, 255, 157, 0.1)"; vStatus.style.borderColor = "var(--success)";
         vStatus.innerHTML = `
             <i class="fas fa-check-circle" style="color: var(--success); font-size: 32px; margin-bottom: 12px; animation: popIn 0.5s ease;"></i>
             <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 18px;">Payment Auto-Verified!</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">Processing your order...</div>
         `;
-        
         triggerHaptic('success');
         
         setTimeout(async () => {
             const time = new Date().toLocaleString('en-IN', { timeZone:'Asia/Kolkata' });
-            
             const messageContent = `✅ **AUTO-VERIFIED ORDER** ✅\n\n` +
                                    `**Gateway:** ${mode === 'razorpay' ? 'Razorpay' : 'UPI QR'}\n` +
                                    `**Order ID:** \`${orderId}\`\n` +
@@ -2461,109 +2192,53 @@
                                    `**Pack:** ${selectedPack.uc} UC\n` +
                                    `**Exact Amount:** ₹${exactPriceStr}\n` +
                                    `**Time:** ${time}`;
-
             try {
-                // Hardcoded Discord Webhook
-                await fetch(HARDCODED_WEBHOOK_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: messageContent })
-                }).catch(e => console.log("Webhook error", e));
-                
-                // Hardcoded Sheet URL 1 for saving order (Regardless of gateway)
+                await fetch(HARDCODED_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: messageContent }) }).catch(e => console.log("Webhook error", e));
                 try {
                     const sheetData = { uid: currentUid, uc: selectedPack.uc };
-                    await fetch(HARDCODED_SHEET_URL, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'text/plain;charset=utf-8'}, 
-                        body: JSON.stringify(sheetData)
-                    });
+                    await fetch(HARDCODED_SHEET_URL, { method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify(sheetData) });
                 } catch(sheetErr) { console.error("Order Save Error:", sheetErr); }
 
-                document.getElementById('orderIdText').textContent = orderId;
-                document.getElementById('receipt-pack').textContent = selectedPack.uc + " UC";
-                document.getElementById('receipt-amount').textContent = "₹" + exactPriceStr;
-                document.getElementById('receipt-uid').textContent = currentUid;
-                document.getElementById('receipt-ign').textContent = currentIgn;
-                document.getElementById('receipt-time').textContent = time;
+                document.getElementById('orderIdText').textContent = orderId; document.getElementById('receipt-pack').textContent = selectedPack.uc + " UC";
+                document.getElementById('receipt-amount').textContent = "₹" + exactPriceStr; document.getElementById('receipt-uid').textContent = currentUid;
+                document.getElementById('receipt-ign').textContent = currentIgn; document.getElementById('receipt-time').textContent = time;
                   
-                showStep(4);
-                
-                localStorage.removeItem('bgmiTimerEnd');
+                showStep(4); localStorage.removeItem('bgmiTimerEnd');
                 
                 const currentHour = getIndiaHour();
                 const startH = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
                 const endH = window.siteConfig.shopTiming.endHour !== undefined ? window.siteConfig.shopTiming.endHour : 9;
                 
                 let isNightTime = false;
-                if (startH < endH) {
-                    isNightTime = (currentHour >= startH && currentHour < endH);
-                } else {
-                    isNightTime = (currentHour >= startH || currentHour < endH);
-                }
+                if (startH < endH) { isNightTime = (currentHour >= startH && currentHour < endH); } else { isNightTime = (currentHour >= startH || currentHour < endH); }
 
                 if (getTgl('enableNightMode') && isNightTime) {
-                    document.getElementById('gameLoaderWrap').style.display = 'none';
-                    document.getElementById('dispFinalSuccessMsg').style.display = 'none';
-                    document.getElementById('nightMessage').style.display = 'block';
+                    document.getElementById('gameLoaderWrap').style.display = 'none'; document.getElementById('dispFinalSuccessMsg').style.display = 'none'; document.getElementById('nightMessage').style.display = 'block';
                 } else {
-                    document.getElementById('gameLoaderWrap').style.display = 'block';
-                    document.getElementById('nightMessage').style.display = 'none';
-                    startDeliveryTimer();
+                    document.getElementById('gameLoaderWrap').style.display = 'block'; document.getElementById('nightMessage').style.display = 'none'; startDeliveryTimer();
                 }
-            } catch(err) {
-                alert("Connection failed while finishing order.");
-                console.error(err);
-            }
+            } catch(err) { alert("Connection failed while finishing order."); console.error(err); }
         }, 1500);
     }
 
     function startDeliveryTimer() {
-        const duration = 420; 
-        const timerText = document.getElementById('deliveryTimer');
-        const fillBar = document.getElementById('gameBarFill');
-        const msg = document.getElementById('deliveryMsg');
-
+        const duration = 420; const timerText = document.getElementById('deliveryTimer'); const fillBar = document.getElementById('gameBarFill'); const msg = document.getElementById('deliveryMsg');
         let endTime = localStorage.getItem('bgmiTimerEnd');
-        
-        if (!endTime) {
-            endTime = new Date().getTime() + (duration * 1000);
-            localStorage.setItem('bgmiTimerEnd', endTime);
-        }
+        if (!endTime) { endTime = new Date().getTime() + (duration * 1000); localStorage.setItem('bgmiTimerEnd', endTime); }
 
         const timerInterval = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = endTime - now;
-            let secondsLeft = Math.floor(distance / 1000);
-            
+            const now = new Date().getTime(); const distance = endTime - now; let secondsLeft = Math.floor(distance / 1000);
             if (distance < 0) {
-                clearInterval(timerInterval);
-                fillBar.style.width = "100%";
-                msg.textContent = "Completed";
-                
-                document.getElementById('gameLoaderWrap').style.display = 'none';
-                document.getElementById('dispFinalSuccessMsg').style.display = 'block';
-                
-                localStorage.removeItem('bgmiTimerEnd');
-                createConfetti();
-                triggerHaptic('success');
-                return;
+                clearInterval(timerInterval); fillBar.style.width = "100%"; msg.textContent = "Completed";
+                document.getElementById('gameLoaderWrap').style.display = 'none'; document.getElementById('dispFinalSuccessMsg').style.display = 'block';
+                localStorage.removeItem('bgmiTimerEnd'); createConfetti(); triggerHaptic('success'); return;
             }
-
-            const m = Math.floor(secondsLeft / 60);
-            const s = secondsLeft % 60;
-            timerText.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            const m = Math.floor(secondsLeft / 60); const s = secondsLeft % 60; timerText.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            const totalDuration = 420; const percentage = ((totalDuration - secondsLeft) / totalDuration) * 100; fillBar.style.width = percentage + "%";
             
-            const totalDuration = 420; 
-            const percentage = ((totalDuration - secondsLeft) / totalDuration) * 100;
-            fillBar.style.width = percentage + "%";
-            
-            if(percentage < 20) msg.textContent = "Connecting to BGMI Servers...";
-            if(percentage >= 20 && percentage < 40) msg.textContent = "Connecting to BGMI Servers...";
-            if(percentage >= 40 && percentage < 60) msg.textContent = "Verifying UID & Player Name...";
-            if(percentage >= 60 && percentage < 80) msg.textContent = "Initiating UC Transfer...";
+            if(percentage < 20) msg.textContent = "Connecting to BGMI Servers..."; if(percentage >= 20 && percentage < 40) msg.textContent = "Connecting to BGMI Servers...";
+            if(percentage >= 40 && percentage < 60) msg.textContent = "Verifying UID & Player Name..."; if(percentage >= 60 && percentage < 80) msg.textContent = "Initiating UC Transfer...";
             if(percentage >= 80 && percentage < 99) msg.textContent = "Finalizing Transaction...";
-            
         }, 1000);
     }
   </script>
