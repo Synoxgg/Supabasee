@@ -1335,8 +1335,8 @@
             
             if (lockSnap.exists()) {
                 const lockData = lockSnap.data();
-                // 3 mins = 180000 ms. Agar purana hai to ignore.
-                if (now - lockData.timestamp < 180000 && lockData.orderId !== currentOrderId) {
+                // 2 mins = 120000 ms. Backend strictly matched with UI 2-min timer.
+                if (now - lockData.timestamp < 120000 && lockData.orderId !== currentOrderId) {
                     return false; // Locked by someone else
                 }
             }
