@@ -218,6 +218,9 @@
       border: 1px solid rgba(0, 224, 255, 0.2);
       padding: 6px 12px;
       border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .stat-number { color: var(--accent); font-weight: 800; font-family: var(--font-display); }
 
@@ -299,7 +302,6 @@
       font-family: var(--font-display);
       font-size: 26px;
       text-transform: uppercase;
-      margin-bottom: 5px;
       color: #fff; 
       background: linear-gradient(to right, #fff, #b0b0b0);
       -webkit-background-clip: text;
@@ -316,7 +318,8 @@
     /* --- INPUT FIELDS --- */
     .form-group { margin-bottom: 20px; position: relative; }
     .form-label {
-      display: block;
+      display: flex;
+      align-items: center;
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
@@ -325,6 +328,19 @@
       letter-spacing: 1px;
     }
     
+    .info-icon {
+      color: var(--primary);
+      margin-left: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .info-icon:hover {
+      color: #fff;
+      transform: scale(1.1);
+    }
+
     .form-input-wrapper { position: relative; }
     
     .form-input {
@@ -751,7 +767,6 @@
 <body oncontextmenu="return false;">
 
   <!-- INITIAL FULL SCREEN LOADER -->
-  <!-- Yeh loader sabse pehle dikhega, jab tak JS setting apply nahi kar deta -->
   <div id="initial-loader">
     <div class="loader-spinner"></div>
     <div class="loader-text">UCIFY</div>
@@ -777,13 +792,14 @@
     
     <div class="top-card">
       <div class="header">
-        <!-- Logo is clickable for admin access (Click 5 times quickly) -->
         <img src="ucify.webp" alt="UCify Logo" class="logo-img" draggable="false" style="pointer-events: auto; cursor: pointer;" onclick="handleLogoClick()">
         <p class="tagline" id="dispTagline">BGMI UC • Lightning-fast delivery</p>
 
-        <!-- Id added for toggling from admin panel -->
         <div class="partner-block" id="partnerBlock">
           <img src="bgmi-official.webp" alt="BGMI Official" class="official-logo" draggable="false">
+          <div style="color: var(--success); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px;">
+            BGMI Authorised Seller
+          </div>
         </div>
 
         <div class="trust-strip" id="dispTrustStrip">
@@ -793,9 +809,9 @@
         </div>
 
         <div class="live-stats" id="dispLiveStats">
-          <div class="stat-badge" id="pillStats">
-            <i class="fa-solid fa-earth-asia" style="color: var(--accent);"></i>
-            <span id="liveOrders" class="stat-number">1425</span> <span id="dispOrdersToday">Orders Today</span>
+          <div class="stat-badge" id="pillStats" style="display: flex; align-items: center; gap: 5px;">
+            <img src="uc-logo.webp" alt="UC" style="width: 14px; height: 14px; object-fit: contain;">
+            <span id="liveOrders" class="stat-number">1425</span> <span id="dispOrdersToday">Packs Delivered</span>
           </div>
         </div>
       </div>
@@ -815,11 +831,16 @@
     <!-- STEP 1: PLAYER DETAILS -->
     <div id="step1" class="step active">
       <div class="step-content">
-        <h2 class="step-title" id="dispStep1Title">Player Details</h2>
-        <p class="subnote">Enter your BGMI ID to verify account</p>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 25px;">
+            <h2 class="step-title" id="dispStep1Title" style="margin-bottom: 0;">Player Details</h2>
+            <i class="fa-solid fa-circle-info info-icon" style="font-size: 18px; margin-left: 0;" onclick="openModal('playerDetailsModal')"></i>
+        </div>
 
         <div class="form-group">
-          <label class="form-label">BGMI Character ID (UID)</label>
+          <label class="form-label">
+            BGMI Character ID (UID)
+            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('uidModal')"></i>
+          </label>
           <div class="form-input-wrapper">
             <input type="tel" class="form-input" id="uid" placeholder="" maxlength="12" inputmode="numeric">
             <i class="input-icon" id="uidIcon"></i>
@@ -828,7 +849,10 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">BGMI ID Name</label>
+          <label class="form-label">
+            BGMI ID Name
+            <i class="fa-solid fa-circle-info info-icon" onclick="openModal('nameModal')"></i>
+          </label>
           <div class="form-input-wrapper">
             <input type="text" class="form-input" id="ign" placeholder="" maxlength="20">
             <i class="input-icon" id="ignIcon"></i>
@@ -848,13 +872,13 @@
         <h2 class="step-title" id="dispStep2Title">Select BGMI UC Packs</h2>
         <p class="subnote">Top up for <span id="displayUid" style="color:var(--primary);">--</span> (<span id="displayIgn" style="color:#fff;">--</span>)</p>
 
-        <!-- TRIAL UC PACK SECTION (Dynamically Rendered from Database) -->
+        <!-- TRIAL UC PACK SECTION -->
         <h3 class="pack-section-title" id="trialPackTitle">Trial UC Pack</h3>
         <div class="packs-grid" id="trialPacksGrid">
           <!-- Rendered dynamically -->
         </div>
 
-        <!-- BULK UC PACK SECTION (Dynamically Rendered from Database) -->
+        <!-- BULK UC PACK SECTION -->
         <h3 class="pack-section-title">Bulk UC Pack</h3>
         <div class="packs-grid" id="bulkPacksGrid">
           <!-- Rendered dynamically -->
@@ -870,23 +894,23 @@
     <!-- STEP 3: PAYMENT -->
     <div id="step3" class="step">
       <div class="step-content">
-        <h2 class="step-title" id="dispStep3Title">Payment Gateway</h2>
+        <h2 class="step-title" id="dispStep3Title">Payment</h2>
         <p class="subnote" id="dispStep3Subnote">Scan & pay using any UPI app</p>
 
         <div class="payment-section">
           
-          <!-- MAINTENANCE UI (Hidden by default, shows if no UPI/Gateway added) -->
+          <!-- MAINTENANCE UI -->
           <div id="maintenanceUI" class="maintenance-box">
              <i class="fas fa-tools" style="color: var(--error); font-size: 32px; margin-bottom: 12px;"></i>
-             <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 20px;" id="dispMaintenanceText">Payment Gateway Under Maintenance</div>
+             <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 20px;" id="dispMaintenanceText">Payment System Under Maintenance</div>
              <div style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Please try again later or contact support.</div>
           </div>
 
           <!-- LOCK UI FOR RAZORPAY CLASH PREVENTION -->
           <div id="lockUI" class="lock-ui-box">
              <i class="fas fa-user-clock" style="font-size: 34px; color: var(--primary); margin-bottom: 12px;"></i>
-             <h3 style="color: #fff; font-family: var(--font-display); margin-bottom: 8px; font-size: 22px;">Gateway Busy</h3>
-             <p style="font-size: 13px; color: #ccc; margin-bottom: 15px; line-height: 1.4;">Another user is currently completing a payment for this specific pack. To prevent transaction mix-ups, please wait or use the instant UPI Gateway.</p>
+             <h3 style="color: #fff; font-family: var(--font-display); margin-bottom: 8px; font-size: 22px;">System Busy</h3>
+             <p style="font-size: 13px; color: #ccc; margin-bottom: 15px; line-height: 1.4;">Another user is currently completing a payment for this specific pack. To prevent transaction mix-ups, please wait or use the instant UPI option.</p>
              <div class="lock-timer-text" id="lockUITimer">02:00</div>
              <div class="btn-row" style="margin-top: 15px;">
                 <button class="btn btn-secondary" style="padding: 12px; font-size: 13px;" onclick="cancelLockWait()">Cancel</button>
@@ -913,14 +937,13 @@
               </div>
               
               <div class="qr-timer" id="qrTimer" style="display:none;">
-                <i class="fa-regular fa-clock"></i> <span id="timerDisplay">15:00</span>
+                <i class="fa-regular fa-clock"></i> <span id="timerDisplay">02:00</span>
               </div>
             </div>
 
             <!-- RAZORPAY CARD -->
             <div class="qr-card" id="razorpayCard" style="display:none; text-align:center; padding: 30px 20px;">
-               <div style="margin-bottom:15px; font-size: 40px; color: #3399cc;"><i class="fa-brands fa-amazon-pay"></i> <i class="fa-brands fa-google-pay"></i></div>
-               <div style="color:#fff; font-weight:700; font-size: 18px; margin-bottom:15px;">Secure Payment Gateway</div>
+               <div style="color:#fff; font-weight:700; font-size: 18px; margin-bottom:15px;">Secure Payment</div>
                <button class="btn btn-primary" id="rzpRedirectBtn" style="background:#3399cc; color:#fff; box-shadow: 0 5px 15px rgba(51, 153, 204, 0.4);">
                   Pay Now <i class="fas fa-external-link-alt" style="margin-left: 5px;"></i>
                </button>
@@ -1042,6 +1065,54 @@
   <div class="modal-overlay" id="refundModal" onclick="closeModalOutside(event, 'refundModal')"><div class="modal-box"><div class="modal-header"><h3>Refund & Cancellation</h3><button class="close-btn" onclick="closeModal('refundModal')"><i class="fas fa-times"></i></button></div><div class="modal-body" id="bodyRefund"></div></div></div>
   <div class="modal-overlay" id="shippingModal" onclick="closeModalOutside(event, 'shippingModal')"><div class="modal-box"><div class="modal-header"><h3>Shipping & Delivery</h3><button class="close-btn" onclick="closeModal('shippingModal')"><i class="fas fa-times"></i></button></div><div class="modal-body" id="bodyShipping"></div></div></div>
   <div class="modal-overlay" id="contactModal" onclick="closeModalOutside(event, 'contactModal')"><div class="modal-box"><div class="modal-header"><h3>Contact Us</h3><button class="close-btn" onclick="closeModal('contactModal')"><i class="fas fa-times"></i></button></div><div class="modal-body" id="bodyContact"></div></div></div>
+  
+  <!-- NEW INFO MODALS -->
+  <div class="modal-overlay" id="playerDetailsModal" onclick="closeModalOutside(event, 'playerDetailsModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 18px;">How to Verify Account</h3>
+        <button class="close-btn" onclick="closeModal('playerDetailsModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="color: #ccc; font-size: 14px; margin-bottom: 15px; text-align: center;">Enter player details to verify account.</p>
+        <video id="playerDetailsVideo" src="bgmi-player-details-info.mp4" loop muted playsinline style="width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: block; background: #000;"></video>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="uidModal" onclick="closeModalOutside(event, 'uidModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 18px;">How To Find Your User ID (UID) in BGMI</h3>
+        <button class="close-btn" onclick="closeModal('uidModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <img src="uid-ss.webp" alt="UID Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 15px;">
+        <ul style="padding-left: 20px; color: #ccc; font-size: 14px; line-height: 1.6;">
+          <li style="margin-bottom: 8px;">Open BGMI and wait until it is fully loaded.</li>
+          <li style="margin-bottom: 8px;">Tap on the Profile Icon.</li>
+          <li style="margin-bottom: 8px;">When you go to the profile section, you will find BGMI User ID (UID)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="nameModal" onclick="closeModalOutside(event, 'nameModal')">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 18px;">How To Find Your BGMI ID name in BGMI</h3>
+        <button class="close-btn" onclick="closeModal('nameModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <img src="bgminame-ss.webp" alt="Name Screenshot" style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--surface-border); margin-bottom: 15px;">
+        <ul style="padding-left: 20px; color: #ccc; font-size: 14px; line-height: 1.6;">
+          <li style="margin-bottom: 8px;">Open BGMI and wait until it is fully loaded.</li>
+          <li style="margin-bottom: 8px;">Tap on the Profile Icon.</li>
+          <li style="margin-bottom: 8px;">When you go to the profile section, you will find BGMI ID name.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <!-- ADMIN MODALS -->
   <div class="modal-overlay" id="adminLoginModal" onclick="closeModalOutside(event, 'adminLoginModal')">
@@ -1087,20 +1158,24 @@
               </div>
           </div>
 
-          <!-- PAYMENT GATEWAY SETTINGS -->
-          <h4 class="admin-section-title">⚖️ Payment Gateway Mode</h4>
+          <!-- PAYMENT MODE SETTINGS -->
+          <h4 class="admin-section-title">⚖️ Payment Mode</h4>
           <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">Choose your active payment method (UPI vs Razorpay).</p>
           <div class="admin-subsection" style="border-left: 2px solid #3399cc;">
               <select id="adminPaymentMode" class="form-input" style="padding: 10px; margin-bottom: 10px;">
-                  <option value="upi">UPI Gateway (Dynamic QR)</option>
-                  <option value="razorpay">Razorpay Gateway (Link Redirect)</option>
+                  <option value="upi">UPI (Dynamic QR)</option>
+                  <option value="razorpay">Razorpay (Link Redirect)</option>
               </select>
               
               <div id="adminRazorpayFields" style="margin-top: 15px;">
-                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Global / Base Link (Optional)</label>
-                  <input type="text" id="adminRazorpayLink" class="form-input" placeholder="https://razorpay.me/@ucify" style="font-size:12px; padding:10px; margin-bottom: 10px;">
+                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Global / Base Links (For load balancing)</label>
+                  <div id="adminRzpLinkList"></div>
+                  <div class="admin-input-group">
+                     <input type="text" id="newRzpLink" class="form-input" placeholder="Enter Razorpay Link" style="padding: 10px; width: 70%;">
+                     <button class="btn btn-primary" onclick="addNewRzpLink()" style="padding: 10px; width: 30%;"><i class="fas fa-plus"></i> Add</button>
+                  </div>
                   
-                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block;">Razorpay Webhook Google Sheet App URL</label>
+                  <label style="font-size:11px; color:#aaa; margin-bottom: 5px; display: block; margin-top: 15px;">Razorpay Webhook Google Sheet App URL</label>
                   <input type="text" id="adminRazorpayApi" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:12px; padding:10px;">
               </div>
           </div>
@@ -1203,7 +1278,7 @@
 
           <div class="admin-subsection">
               <label style="font-size:12px; color:var(--error); font-weight:600;">Maintenance Mode Text</label>
-              <input type="text" class="form-input" id="adminTextMaintenance" placeholder="Payment Gateway Under Maintenance" style="font-size:12px; padding:8px; margin-top:5px;">
+              <input type="text" class="form-input" id="adminTextMaintenance" placeholder="Payment System Under Maintenance" style="font-size:12px; padding:8px; margin-top:5px;">
           </div>
           
           <!-- General Component Toggles -->
@@ -1400,15 +1475,29 @@
                     if(!dbConfig.adminAuth) dbConfig.adminAuth = window.siteConfig.adminAuth || defaultAdminConfig.adminAuth;
 
                     if(!dbConfig.paymentMode) dbConfig.paymentMode = "upi";
-                    if(dbConfig.razorpayLink === undefined) dbConfig.razorpayLink = "";
+                    
+                    if(dbConfig.razorpayLinks === undefined) dbConfig.razorpayLinks = [];
+                    // Migrate older single link to multiple array format
+                    if(dbConfig.razorpayLink && dbConfig.razorpayLinks.length === 0) {
+                        dbConfig.razorpayLinks = dbConfig.razorpayLink.split(',').map(l => l.trim()).filter(l => l);
+                        delete dbConfig.razorpayLink;
+                    }
+
                     if(dbConfig.razorpayApiUrl === undefined) dbConfig.razorpayApiUrl = "";
                     
-                    if(dbConfig.trialPacks) {
-                        dbConfig.trialPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
-                    }
-                    if(dbConfig.bulkPacks) {
-                        dbConfig.bulkPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
-                    }
+                    const migratePacks = (packs) => {
+                        if(packs) {
+                            packs.forEach(p => {
+                                if(p.rzpLinks === undefined) p.rzpLinks = [];
+                                if(p.rzpLink) {
+                                    p.rzpLinks.push(...p.rzpLink.split(',').map(l=>l.trim()).filter(l=>l));
+                                    delete p.rzpLink;
+                                }
+                            });
+                        }
+                    };
+                    migratePacks(dbConfig.trialPacks);
+                    migratePacks(dbConfig.bulkPacks);
 
                     window.siteConfig = dbConfig;
                     
@@ -1416,6 +1505,7 @@
                     if(typeof window.renderSitePacks === 'function') window.renderSitePacks();
                     if(typeof window.renderAdminPacksList === 'function') window.renderAdminPacksList();
                     if(typeof window.renderAdminUpiList === 'function') window.renderAdminUpiList();
+                    if(typeof window.renderAdminRzpLinksList === 'function') window.renderAdminRzpLinksList();
                     if(typeof window.injectDynamicStatusUI === 'function') window.injectDynamicStatusUI(); 
                     
                 } else {
@@ -1440,7 +1530,7 @@
     const defaultAdminConfig = {
         adminAuth: { u: "c3lub3g=", p: "bW9vbnRhZ2U=" },
         paymentMode: "upi", 
-        razorpayLink: "",
+        razorpayLinks: [],
         razorpayApiUrl: "", 
         upiIds: [], 
         shopTiming: { startHour: 0, endHour: 9 },
@@ -1449,10 +1539,10 @@
             secureBadge: "Secure",
             instantBadge: "Instant",
             supportBadge: "24/7",
-            ordersToday: "Orders Today",
+            ordersToday: "Packs Delivered", // Updated text here
             step1Title: "Player Details",
             step2Title: "Select BGMI UC Packs",
-            step3Title: "Payment Gateway",
+            step3Title: "Payment",
             step3Subnote: "Scan & pay using any UPI app",
             totalPayable: "TOTAL PAYABLE (EXACT)",
             warnTitle: "Limit Warning:",
@@ -1462,7 +1552,7 @@
             awaitingDesc2: "Our system will detect your payment automatically.",
             upiBanner: "Scan & Pay From Any UPI App",
             cancelBtn: "Go Back",
-            maintenance: "Payment Gateway Under Maintenance",
+            maintenance: "Payment System Under Maintenance",
             nightModeTitle: "Night Mode Active",
             nightModeDesc: "Instant delivery paused. UC will be credited after 9:00 AM.",
             successTitle: "Order Confirmed",
@@ -1484,18 +1574,18 @@
             enableNightMode: true 
         },
         policies: {
-            showTerms: true, contentTerms: "<h4>1. Introduction</h4><p>By using this website, you agree to these Terms and Conditions. This platform provides digital top-up services for BGMI UC.</p><h4>2. Services Provided</h4><p>We facilitate the transfer of digital in-game currency (UC) to the provided Player UID. It is the user's responsibility to enter the correct UID.</p><h4>3. Payment</h4><p>All transactions are processed securely via our automated payment gateways. We do not store your credit card or banking details.</p><h4>4. User Responsibilities</h4><p>You must ensure the accuracy of the Player ID (UID) provided. Transactions processed to incorrect UIDs due to user error cannot be reversed.</p>",
-            showPrivacy: true, contentPrivacy: "<h4>1. Information We Collect</h4><p>We collect your BGMI Player ID (UID) and In-Game Name (IGN) solely for the purpose of delivering the digital product. We process payments via secure gateways and do not store financial data.</p><h4>2. How We Use Your Data</h4><p>Your data is used strictly for order fulfillment, customer support, and transaction verification.</p><h4>3. Data Sharing</h4><p>We do not sell, trade, or rent user data to third parties. Information is only shared with our payment gateway as required to process your transaction.</p>",
+            showTerms: true, contentTerms: "<h4>1. Introduction</h4><p>By using this website, you agree to these Terms and Conditions. This platform provides digital top-up services for BGMI UC.</p><h4>2. Services Provided</h4><p>We facilitate the transfer of digital in-game currency (UC) to the provided Player UID. It is the user's responsibility to enter the correct UID.</p><h4>3. Payment</h4><p>All transactions are processed securely via our automated payment methods. We do not store your credit card or banking details.</p><h4>4. User Responsibilities</h4><p>You must ensure the accuracy of the Player ID (UID) provided. Transactions processed to incorrect UIDs due to user error cannot be reversed.</p>",
+            showPrivacy: true, contentPrivacy: "<h4>1. Information We Collect</h4><p>We collect your BGMI Player ID (UID) and In-Game Name (IGN) solely for the purpose of delivering the digital product. We process payments securely and do not store financial data.</p><h4>2. How We Use Your Data</h4><p>Your data is used strictly for order fulfillment, customer support, and transaction verification.</p><h4>3. Data Sharing</h4><p>We do not sell, trade, or rent user data to third parties. Information is only shared with our payment provider as required to process your transaction.</p>",
             showRefund: true, contentRefund: "<h4>1. Digital Goods Policy</h4><p>Because the products we sell are strictly digital in-game currency, <strong>all sales are final</strong>. Once the UC is successfully transferred to the provided UID, no refunds or cancellations can be processed.</p><h4>2. Failed Transactions</h4><p>If your payment is deducted but the order fails on our end, a full refund will be automatically initiated to your original payment method within 5-7 business days.</p><h4>3. Incorrect UID</h4><p>We are not responsible for UC sent to an incorrect UID provided by the user. No refunds will be issued in such cases.</p>",
             showShipping: true, contentShipping: "<h4>1. Delivery Method</h4><p>All deliveries are purely digital. No physical product will be shipped to your address.</p><h4>2. Delivery Time</h4><p>UC is typically credited to your account instantly or within 10-15 minutes. In case of server delays, please allow up to 24 hours for the transaction to reflect in your BGMI account.</p>",
             showContact: true, contentContact: "<h4>Get in Touch</h4><p>If you face any issues with your order, please contact our support team. Have your Order ID and Transaction ID ready.</p><ul><li><strong>Business Name:</strong> Krafton Inc</li><li><strong>Email Support:</strong> ucify.support@gmail.com</li><li><strong>Operating Hours:</strong> Mon - Sat, 10:00 AM to 7:00 PM</li></ul>"
         },
-        trialPacks: [ { uc: 13, price: 5, rzpLink: "" } ],
+        trialPacks: [ { uc: 13, price: 5, rzpLinks: [] } ],
         bulkPacks: [
-            { uc: 1800, price: 300, rzpLink: "" },
-            { uc: 4200, price: 600, rzpLink: "" },
-            { uc: 9600, price: 1200, rzpLink: "" },
-            { uc: 14800, price: 1800, rzpLink: "" }
+            { uc: 1800, price: 300, rzpLinks: [] },
+            { uc: 4200, price: 600, rzpLinks: [] },
+            { uc: 9600, price: 1200, rzpLinks: [] },
+            { uc: 14800, price: 1800, rzpLinks: [] }
         ]
     };
 
@@ -1506,15 +1596,28 @@
         delete window.siteConfig.upiId;
     }
     if(!window.siteConfig.paymentMode) window.siteConfig.paymentMode = "upi";
-    if(window.siteConfig.razorpayLink === undefined) window.siteConfig.razorpayLink = "";
+    
+    if(window.siteConfig.razorpayLinks === undefined) window.siteConfig.razorpayLinks = [];
+    if(window.siteConfig.razorpayLink && window.siteConfig.razorpayLinks.length === 0) {
+        window.siteConfig.razorpayLinks = window.siteConfig.razorpayLink.split(',').map(l => l.trim()).filter(l => l);
+        delete window.siteConfig.razorpayLink;
+    }
+
     if(window.siteConfig.razorpayApiUrl === undefined) window.siteConfig.razorpayApiUrl = "";
     
-    if(window.siteConfig.trialPacks) {
-        window.siteConfig.trialPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
-    }
-    if(window.siteConfig.bulkPacks) {
-        window.siteConfig.bulkPacks.forEach(p => { if(p.rzpLink === undefined) p.rzpLink = ""; });
-    }
+    const migratePacks = (packs) => {
+        if(packs) {
+            packs.forEach(p => {
+                if(p.rzpLinks === undefined) p.rzpLinks = [];
+                if(p.rzpLink) {
+                    p.rzpLinks.push(...p.rzpLink.split(',').map(l=>l.trim()).filter(l=>l));
+                    delete p.rzpLink;
+                }
+            });
+        }
+    };
+    migratePacks(window.siteConfig.trialPacks);
+    migratePacks(window.siteConfig.bulkPacks);
 
     if(!window.siteConfig.texts) window.siteConfig.texts = defaultAdminConfig.texts;
     for(let k in defaultAdminConfig.texts) { if(window.siteConfig.texts[k] === undefined) window.siteConfig.texts[k] = defaultAdminConfig.texts[k]; }
@@ -1533,7 +1636,7 @@
     let razorpayWindow = null; 
     let qrTimer = null;
     let paymentVerificationInterval = null;
-    let timerSeconds = 900;
+    let timerSeconds = 120;
     let lockWaitTimer = null;
     let currentUid = "";
     let currentIgn = "";
@@ -1578,7 +1681,7 @@
         document.getElementById('pillSecure').style.display = getTgl('showSecureBadge') ? 'flex' : 'none';
         document.getElementById('pillInstant').style.display = getTgl('showInstantBadge') ? 'flex' : 'none';
         document.getElementById('pillSupport').style.display = getTgl('showSupportBadge') ? 'flex' : 'none';
-        document.getElementById('pillStats').style.display = getTgl('showOrdersToday') ? 'inline-block' : 'none';
+        document.getElementById('pillStats').style.display = getTgl('showOrdersToday') ? 'flex' : 'none'; 
         
         document.getElementById('dispStep1Title').style.display = getTgl('showStep1Title') ? 'block' : 'none';
         document.getElementById('dispStep2Title').style.display = getTgl('showStep2Title') ? 'block' : 'none';
@@ -1595,7 +1698,10 @@
         document.getElementById('dispReceiptBox').style.display = getTgl('showReceipt') ? 'block' : 'none';
 
         document.getElementById('partnerBlock').style.display = getTgl('showPartnerLogo') ? 'block' : 'none';
-        document.getElementById('dispUpiAppsBanner').style.display = getTgl('showUpiApps') ? 'block' : 'none';
+        
+        const mode = window.siteConfig?.paymentMode || 'upi';
+        document.getElementById('dispUpiAppsBanner').style.display = (getTgl('showUpiApps') && mode === 'upi') ? 'block' : 'none';
+        
         document.getElementById('footerKrafton').style.display = getTgl('showFooterKrafton') ? 'block' : 'none';
         allowSocialProofPopup = getTgl('showSocialProof');
 
@@ -1616,14 +1722,23 @@
         const vStatus = document.getElementById('verificationStatus');
         if(!vStatus || vStatus.style.background === "rgba(0, 255, 157, 0.1)") return; 
         
+        const mode = window.siteConfig?.paymentMode || 'upi';
+        let descHtml = '';
+        if (mode === 'upi') {
+            descHtml = `${getText('awaitingDesc1')} <strong id="exactAmountText" style="color: var(--primary);">₹${exactPriceStr}</strong>.<br>
+            ${getText('awaitingDesc2')}`;
+        } else {
+            descHtml = `Please complete your payment securely.<br>
+            ${getText('awaitingDesc2')}`;
+        }
+
         vStatus.style.background = "rgba(0, 224, 255, 0.05)";
         vStatus.style.borderColor = "rgba(0, 224, 255, 0.2)";
         vStatus.innerHTML = `
             <i class="fas fa-circle-notch fa-spin" style="color: var(--accent); font-size: 28px; margin-bottom: 12px;"></i>
             <div style="font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 18px; letter-spacing: 1px;">${getText('awaitingTitle')}</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
-                ${getText('awaitingDesc1')} <strong id="exactAmountText" style="color: var(--primary);">₹${exactPriceStr}</strong>.<br>
-                ${getText('awaitingDesc2')}
+                ${descHtml}
             </div>
         `;
     }
@@ -1635,9 +1750,33 @@
     document.body.addEventListener('touchstart', initAudio, { once: true });
     document.addEventListener("visibilitychange", function() { if (document.hidden) { bgm.pause(); } else { bgm.play().catch(e => console.log("Waiting")); } });
 
-    window.openModal = function(modalId) { document.getElementById(modalId).classList.add('active'); document.body.classList.add('modal-open'); }
-    window.closeModal = function(modalId) { document.getElementById(modalId).classList.remove('active'); document.body.classList.remove('modal-open'); }
-    window.closeModalOutside = function(event, modalId) { if (event.target.id === modalId) window.closeModal(modalId); }
+    // JS Updated for Video handling inside Modals
+    window.openModal = function(modalId) { 
+        document.getElementById(modalId).classList.add('active'); 
+        document.body.classList.add('modal-open'); 
+        if (modalId === 'playerDetailsModal') {
+            const vid = document.getElementById('playerDetailsVideo');
+            if (vid) {
+                vid.currentTime = 0;
+                vid.play().catch(e => console.log(e));
+            }
+        }
+    }
+    
+    window.closeModal = function(modalId) { 
+        document.getElementById(modalId).classList.remove('active'); 
+        document.body.classList.remove('modal-open'); 
+        if (modalId === 'playerDetailsModal') {
+            const vid = document.getElementById('playerDetailsVideo');
+            if (vid) {
+                vid.pause();
+            }
+        }
+    }
+    
+    window.closeModalOutside = function(event, modalId) { 
+        if (event.target.id === modalId) window.closeModal(modalId); 
+    }
 
     // --- ADMIN LOGIC ---
     let adminClickCount = 0;
@@ -1660,7 +1799,7 @@
         const validU = window.siteConfig.adminAuth?.u || defaultAdminConfig.adminAuth.u;
         document.getElementById('adminSetUser').placeholder = "Current: " + atob(validU); document.getElementById('adminSetUser').value = ""; document.getElementById('adminSetPass').value = "";
         document.getElementById('adminPaymentMode').value = window.siteConfig.paymentMode || 'upi';
-        document.getElementById('adminRazorpayLink').value = window.siteConfig.razorpayLink || '';
+        
         document.getElementById('adminRazorpayApi').value = window.siteConfig.razorpayApiUrl || '';
         document.getElementById('adminNightStart').value = window.siteConfig.shopTiming.startHour !== undefined ? window.siteConfig.shopTiming.startHour : 0;
         document.getElementById('adminNightEnd').value = window.siteConfig.shopTiming.endHour !== undefined ? window.siteConfig.shopTiming.endHour : 9;
@@ -1701,9 +1840,10 @@
         document.getElementById('adminContentShipping').value = window.siteConfig.policies.contentShipping || defaultAdminConfig.policies.contentShipping;
         document.getElementById('adminContentContact').value = window.siteConfig.policies.contentContact || defaultAdminConfig.policies.contentContact;
         
-        window.renderAdminUpiList(); window.renderAdminPacksList(); window.openModal('adminPanelModal');
+        window.renderAdminUpiList(); window.renderAdminRzpLinksList(); window.renderAdminPacksList(); window.openModal('adminPanelModal');
     }
 
+    // --- UPI List Render ---
     window.renderAdminUpiList = function() {
         if(!document.getElementById('adminUpiList')) return;
         const upis = window.siteConfig.upiIds || [];
@@ -1729,8 +1869,44 @@
         } else { alert("Please enter a valid UPI ID"); }
     }
 
+    // --- Razorpay Global Links List Render ---
+    window.renderAdminRzpLinksList = function() {
+        if(!document.getElementById('adminRzpLinkList')) return;
+        const links = window.siteConfig.razorpayLinks || [];
+        const renderList = links.map((l, index) => `
+            <div class="admin-input-group" style="justify-content: space-between; background: rgba(0, 224, 255, 0.05); border: 1px solid rgba(0, 224, 255, 0.1);">
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden;">
+                    <span style="font-size: 13px; color: #fff; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${l}">${l}</span>
+                </div>
+                <button class="btn" style="background:var(--error); padding: 8px; width: 40px; flex-shrink: 0;" onclick="removeRzpLink(${index})"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+        
+        if(links.length === 0) { 
+            document.getElementById('adminRzpLinkList').innerHTML = `<div style="text-align:center; padding: 10px; color: #aaa; font-size: 12px; margin-bottom: 10px; border: 1px dashed #555; border-radius: var(--radius-sm);">No Global Razorpay Links added.</div>`;
+        } else { 
+            document.getElementById('adminRzpLinkList').innerHTML = renderList; 
+        }
+    }
+
+    window.removeRzpLink = function(index) { window.siteConfig.razorpayLinks.splice(index, 1); window.renderAdminRzpLinksList(); }
+    window.addNewRzpLink = function() {
+        const val = document.getElementById('newRzpLink').value.trim();
+        if(val) { 
+            if(!window.siteConfig.razorpayLinks) window.siteConfig.razorpayLinks = []; 
+            window.siteConfig.razorpayLinks.push(val); 
+            document.getElementById('newRzpLink').value = ''; 
+            window.renderAdminRzpLinksList();
+        } else { 
+            alert("Please enter a valid Razorpay link"); 
+        }
+    }
+
+
+    // --- Admin Packs Render with specific Razorpay Links UI ---
     window.renderAdminPacksList = function() {
         if(!document.getElementById('adminTrialPacksList')) return;
+        
         const renderList = (packs, type) => packs.map((p, index) => `
             <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); padding: 10px; margin-bottom: 10px; border-radius: 8px;">
                 <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
@@ -1738,22 +1914,70 @@
                     <input type="number" class="form-input" value="${p.price}" onchange="updatePack('${type}', ${index}, 'price', this.value)" style="padding: 8px; font-size: 13px; width:40%;" placeholder="₹">
                     <button class="btn" style="background:var(--error); padding: 8px; width: 20%;" onclick="removePack('${type}', ${index})"><i class="fas fa-trash"></i></button>
                 </div>
-                <input type="text" class="form-input" value="${p.rzpLink || ''}" onchange="updatePack('${type}', ${index}, 'rzpLink', this.value)" style="padding: 8px; font-size: 11px; width:100%;" placeholder="Paste specific fixed amount Razorpay.me link here">
+                
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; margin-top: 10px;">
+                    <label style="font-size: 11px; color: #aaa; margin-bottom: 5px; display:block;">Specific Razorpay Links (Load Balanced)</label>
+                    
+                    <div style="margin-bottom: 8px;">
+                        ${(p.rzpLinks || []).map((link, lIndex) => `
+                            <div class="flex-row-center" style="margin-top: 4px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;">
+                                <span style="font-size: 11px; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; flex:1;" title="${link}">${link}</span>
+                                <button class="btn" style="background:var(--error); padding: 4px; width: 25px; flex-shrink: 0; min-height: 25px;" onclick="removePackRzpLink('${type}', ${index}, ${lIndex})">
+                                    <i class="fas fa-trash" style="font-size:10px;"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="flex-row-center">
+                        <input type="text" id="newPackLink-${type}-${index}" class="form-input" placeholder="Add pack specific link" style="padding: 8px; font-size: 11px; flex:1;">
+                        <button class="btn btn-primary" onclick="addPackRzpLink('${type}', ${index})" style="padding: 8px; width: 40px; flex-shrink: 0; min-height: 35px;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         `).join('');
+        
         document.getElementById('adminTrialPacksList').innerHTML = renderList(window.siteConfig.trialPacks || [], 'trialPacks');
         document.getElementById('adminBulkPacksList').innerHTML = renderList(window.siteConfig.bulkPacks || [], 'bulkPacks');
     }
 
+    window.addPackRzpLink = function(type, packIndex) {
+        const input = document.getElementById(`newPackLink-${type}-${packIndex}`);
+        const val = input.value.trim();
+        if(val) {
+            if(!window.siteConfig[type][packIndex].rzpLinks) window.siteConfig[type][packIndex].rzpLinks = [];
+            window.siteConfig[type][packIndex].rzpLinks.push(val);
+            input.value = '';
+            window.renderAdminPacksList();
+        } else {
+            alert("Please enter a valid link to add.");
+        }
+    };
+
+    window.removePackRzpLink = function(type, packIndex, linkIndex) {
+        window.siteConfig[type][packIndex].rzpLinks.splice(linkIndex, 1);
+        window.renderAdminPacksList();
+    };
+
     window.updatePack = function(type, index, field, value) {
-        if (field === 'rzpLink') { window.siteConfig[type][index][field] = value.trim(); } else { window.siteConfig[type][index][field] = parseInt(value) || 0; }
+        window.siteConfig[type][index][field] = parseInt(value) || 0;
     }
+    
     window.removePack = function(type, index) { window.siteConfig[type].splice(index, 1); window.renderAdminPacksList(); }
+    
     window.addNewPack = function() {
         const type = document.getElementById('newPackType').value === 'trial' ? 'trialPacks' : 'bulkPacks';
         const uc = parseInt(document.getElementById('newPackUc').value); const price = parseInt(document.getElementById('newPackPrice').value);
-        if(uc && price) { window.siteConfig[type].push({uc, price, rzpLink: ""}); document.getElementById('newPackUc').value = ''; document.getElementById('newPackPrice').value = ''; window.renderAdminPacksList();
-        } else { alert("Please enter valid UC and Price"); }
+        if(uc && price) { 
+            window.siteConfig[type].push({uc, price, rzpLinks: []}); 
+            document.getElementById('newPackUc').value = ''; 
+            document.getElementById('newPackPrice').value = ''; 
+            window.renderAdminPacksList();
+        } else { 
+            alert("Please enter valid UC and Price"); 
+        }
     }
 
     window.saveAdminSettings = async function() {
@@ -1764,7 +1988,6 @@
         if(newU && newP) { window.siteConfig.adminAuth = { u: btoa(newU), p: btoa(newP) }; }
         
         window.siteConfig.paymentMode = document.getElementById('adminPaymentMode').value;
-        window.siteConfig.razorpayLink = document.getElementById('adminRazorpayLink').value.trim();
         window.siteConfig.razorpayApiUrl = document.getElementById('adminRazorpayApi').value.trim();
         window.siteConfig.shopTiming.startHour = parseInt(document.getElementById('adminNightStart').value) || 0;
         window.siteConfig.shopTiming.endHour = parseInt(document.getElementById('adminNightEnd').value) || 9;
@@ -1856,7 +2079,7 @@
         if(window.siteConfig.trialPacks) {
             window.siteConfig.trialPacks.forEach(pack => {
                 trialGrid.innerHTML += `
-                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplink="${pack.rzpLink || ''}">
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplinks="${encodeURIComponent(JSON.stringify(pack.rzpLinks || []))}">
                     <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
                     <div class="pack-price">₹${pack.price}</div>
                   </div>`;
@@ -1865,7 +2088,7 @@
         if(window.siteConfig.bulkPacks) {
             window.siteConfig.bulkPacks.forEach(pack => {
                 bulkGrid.innerHTML += `
-                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplink="${pack.rzpLink || ''}">
+                  <div class="pack-card" data-uc="${pack.uc}" data-price="${pack.price}" data-rzplinks="${encodeURIComponent(JSON.stringify(pack.rzpLinks || []))}">
                     <div class="pack-uc"><img src="uc-logo.webp" class="uc-icon" draggable="false"> ${pack.uc} UC</div>
                     <div class="pack-price">₹${pack.price}</div>
                   </div>`;
@@ -1882,7 +2105,12 @@
                 this.classList.add('selected');
                 const checkMark = document.createElement('div'); checkMark.className = 'check-mark'; checkMark.innerHTML = '<i class="fa-solid fa-check"></i>';
                 this.appendChild(checkMark);
-                selectedPack = { uc: this.dataset.uc, price: this.dataset.price, rzpLink: this.dataset.rzplink };
+                
+                selectedPack = { 
+                    uc: this.dataset.uc, 
+                    price: this.dataset.price, 
+                    rzpLinks: JSON.parse(decodeURIComponent(this.dataset.rzplinks)) 
+                };
                 document.getElementById('next2').disabled = false;
             });
         });
@@ -1935,13 +2163,28 @@
     }
     animateLiveOrders();
 
-    function startQRTimer(){
-      const display = document.getElementById('timerDisplay'); const timerEl = document.getElementById('qrTimer'); timerEl.style.display = 'block'; 
-      if(qrTimer) clearInterval(qrTimer); timerSeconds = 900;
+    function startQRTimer(mode = 'upi'){
+      const display = document.getElementById('timerDisplay');
+      const timerEl = document.getElementById('qrTimer');
+      if (mode === 'upi') timerEl.style.display = 'block'; 
+
+      if(qrTimer) clearInterval(qrTimer);
+      timerSeconds = 120; // 2 minutes auto redirect
+      
       qrTimer = setInterval(() => {
-        timerSeconds--; const mins = Math.floor(timerSeconds / 60); const secs = timerSeconds % 60;
-        display.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        if(timerSeconds <= 0){ clearInterval(qrTimer); display.textContent = 'Expired'; if(paymentVerificationInterval) clearInterval(paymentVerificationInterval); }
+        timerSeconds--;
+        const mins = Math.floor(timerSeconds / 60); const secs = timerSeconds % 60;
+        
+        if (mode === 'upi') display.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        
+        if(timerSeconds <= 0){
+            clearInterval(qrTimer);
+            if(mode === 'upi') display.textContent = 'Expired';
+            if(paymentVerificationInterval) clearInterval(paymentVerificationInterval);
+            
+            // Programmatically go back without toast message
+            document.getElementById('back3').click();
+        }
       }, 1000);
     }
 
@@ -2006,9 +2249,19 @@
         document.getElementById('displayUid').textContent = currentUid; document.getElementById('displayIgn').textContent = currentIgn;
 
         const purchasedPacks = await fetchPurchasedPacks(currentUid);
+        
+        // Trial pack check logic - mark ALL trial packs if ANY trial pack was purchased
+        const trialUcValues = (window.siteConfig.trialPacks || []).map(p => p.uc.toString());
+        const hasPurchasedAnyTrial = purchasedPacks.some(uc => trialUcValues.includes(uc.toString()));
+
         document.querySelectorAll('.pack-card').forEach(card => {
             card.classList.remove('purchased', 'selected'); card.querySelector('.check-mark')?.remove();
-            if(purchasedPacks.includes(card.dataset.uc)){ card.classList.add('purchased'); }
+            
+            const isTrialPack = trialUcValues.includes(card.dataset.uc.toString());
+            
+            if ((isTrialPack && hasPurchasedAnyTrial) || purchasedPacks.includes(card.dataset.uc)) {
+                card.classList.add('purchased');
+            }
         });
 
         const trialTitle = document.getElementById('trialPackTitle'); const trialGrid = document.getElementById('trialPacksGrid');
@@ -2073,15 +2326,26 @@
       btn.disabled = true;
 
       let exactPrice = parseFloat(selectedPack.price);
-      let rzpTargetLink = window.siteConfig.razorpayLink || "";
+      let rzpTargetLink = "";
 
       if (mode === 'upi') {
           const randomDecimal = (Math.floor(Math.random() * 99) + 1) / 100; exactPrice += randomDecimal;
+          exactPriceStr = exactPrice.toFixed(2);
       } else if (mode === 'razorpay') {
-          if (selectedPack.rzpLink && selectedPack.rzpLink.trim() !== '') { rzpTargetLink = selectedPack.rzpLink.trim(); }
+          let rzpGlobalLinks = window.siteConfig.razorpayLinks || [];
+          let packSpecificLinks = selectedPack.rzpLinks || [];
+          
+          if (packSpecificLinks.length > 0) { 
+              // Pick random from pack specific links
+              rzpTargetLink = packSpecificLinks[Math.floor(Math.random() * packSpecificLinks.length)];
+          } else if (rzpGlobalLinks.length > 0) { 
+              // Fallback to random global link
+              rzpTargetLink = rzpGlobalLinks[Math.floor(Math.random() * rzpGlobalLinks.length)];
+          }
+          
+          exactPriceStr = exactPrice.toString();
       }
       
-      exactPriceStr = exactPrice.toFixed(2); 
       orderId = generateOrderId();
       
       // FIREBASE SMART LOCKING FOR RAZORPAY
@@ -2109,6 +2373,9 @@
         
       if (mode === 'upi') {
           document.getElementById('razorpayCard').style.display = 'none'; document.getElementById('upiCard').style.display = 'block';
+          document.getElementById('dispUpiAppsBanner').style.display = getTgl('showUpiApps') ? 'block' : 'none';
+          document.getElementById('dispStep3Subnote').textContent = getText('step3Subnote');
+
           const qrImage = document.getElementById('staticQrImage'); const loader = document.getElementById('qrLoader');
           qrImage.style.display = 'none'; loader.style.display = 'block';
 
@@ -2118,11 +2385,14 @@
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}&margin=10`;
           
           qrImage.src = qrUrl;
-          qrImage.onload = function(){ loader.style.display = 'none'; qrImage.style.display = 'block'; startQRTimer(); startPaymentVerification(exactPriceStr, 'upi'); };
+          qrImage.onload = function(){ loader.style.display = 'none'; qrImage.style.display = 'block'; startQRTimer('upi'); startPaymentVerification(exactPriceStr, 'upi'); };
           qrImage.onerror = function(){ loader.style.display = 'none'; console.log("Error loading QR code."); };
       } 
       else if (mode === 'razorpay') {
           document.getElementById('upiCard').style.display = 'none'; document.getElementById('razorpayCard').style.display = 'block';
+          document.getElementById('dispUpiAppsBanner').style.display = 'none';
+          document.getElementById('dispStep3Subnote').textContent = "Complete your transaction securely";
+
           document.getElementById('rzpExactAmountText').textContent = exactPriceStr;
           
           document.getElementById('rzpRedirectBtn').onclick = function() {
@@ -2130,6 +2400,7 @@
               razorpayWindow = window.open(rzpTargetLink, '_blank');
           };
           
+          startQRTimer('razorpay');
           startPaymentVerification(exactPriceStr, 'razorpay');
       }
 
@@ -2185,7 +2456,7 @@
         setTimeout(async () => {
             const time = new Date().toLocaleString('en-IN', { timeZone:'Asia/Kolkata' });
             const messageContent = `✅ **AUTO-VERIFIED ORDER** ✅\n\n` +
-                                   `**Gateway:** ${mode === 'razorpay' ? 'Razorpay' : 'UPI QR'}\n` +
+                                   `**Method:** ${mode === 'razorpay' ? 'Razorpay' : 'UPI QR'}\n` +
                                    `**Order ID:** \`${orderId}\`\n` +
                                    `**UID:** \`${currentUid}\`\n` +
                                    `**IGN:** ${currentIgn}\n` +
